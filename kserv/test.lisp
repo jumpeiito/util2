@@ -1,0 +1,1 @@
+(print (truename "./setting.lisp"))
