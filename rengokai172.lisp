@@ -64,9 +64,10 @@
 (defun 172-target? (obj)
   (declare (type 172data obj)
 	   (optimize speed))
-  (with-slots (健診メッセージ 受診券整理番号) obj
+  (with-slots (健診メッセージ 指導メッセージID 受診券整理番号) obj
     (and (string-null 健診メッセージ)
-	 (string-not-null 受診券整理番号))))
+	 (string-not-null 受診券整理番号)
+	 (not (equal 指導メッセージID "MKCA01746E")))))
 
 (defun 172-2011-hash ()
   (push-hash-table
@@ -604,53 +605,130 @@
 
 (in-package :r167) ;----------------------------------------------------------------------
 
-(defun %make-array (main)
-  (iter (with ary = (make-array '(96 13) :initial-element (list 0 0 0 0 0)))
-	(for line :in main)
-	(optima:match line
-	  ((kensin::r167 kensin::支部 kensin::実施月 kensin::性別 kensin::整理番号)
-	   (let1 m (if (< kensin::実施月 4) (+ kensin::実施月 9) (- kensin::実施月 4))
-	     (setf (aref ary (kensin::int kensin::支部) m)
-		   (mapcar #'+
-			   (let1 l (list 1 0 0 0 0)
-			     (setf (nth (sex kensin::性別) l) 1)
-			     (setf (nth (+ 2 (hk kensin::整理番号)) l) 1)
-			     l)
-			   (aref ary (kensin::int kensin::支部) m))))))
-	(finally (return ary))))
+;; (defun %make-array (main)
+;;   (iter (with ary = (make-array '(96 13) :initial-element (list 0 0 0 0 0)))
+;; 	(for line :in main)
+;; 	(optima:match line
+;; 	  ((kensin::r167 kensin::支部 kensin::実施月 kensin::性別 kensin::整理番号)
+;; 	   (let1 m (if (< kensin::実施月 4) (+ kensin::実施月 9) (- kensin::実施月 4))
+;; 	     (setf (aref ary (kensin::int kensin::支部) m)
+;; 		   (mapcar #'+
+;; 			   (let1 l (list 1 0 0 0 0)
+;; 			     (setf (nth (sex kensin::性別) l) 1)
+;; 			     (setf (nth (+ 2 (hk kensin::整理番号)) l) 1)
+;; 			     l)
+;; 			   (aref ary (kensin::int kensin::支部) m))))))
+;; 	(finally (return ary))))
 
-(defun %init (shibu-code ary)
-  (reduce (lambda (x y)
-	    (if y (mapcar #'cons x y) (mapcar #'list x)))
-	  (mapcar (lambda (n) (aref ary shibu-code n))
-		  (iota :from 0 :to 12))
-	  :initial-value nil
-	  :from-end t))
+;; (defun %init (shibu-code ary)
+;;   (reduce (lambda (x y)
+;; 	    (if y (mapcar #'cons x y) (mapcar #'list x)))
+;; 	  (mapcar (lambda (n) (aref ary shibu-code n))
+;; 		  (iota :from 0 :to 12))
+;; 	  :initial-value nil
+;; 	  :from-end t))
+(declaim (inline create-167shibu add-167shibu))
 
-(defun %classify (172data 167hash)
-  (iter (with ary = (make-array '(96 13) :initial-element (list 0 0 0 0 0)))
+(defun %month (r167)
+  (with-slots (kensin::実施月) r167
+    (if (> 4 kensin::実施月)
+	(+ kensin::実施月 8)
+	(- kensin::実施月 4))))
+
+(defun %r172-base-info (r172)
+  (with-slots (kensin::受診券整理番号
+	       kensin::性別
+	       kensin::被保険者証記号
+	       kensin::被保険者証番号) r172
+    (values kensin::受診券整理番号
+	    (read-from-string
+	     (kensin::shibu kensin::被保険者証記号 kensin::被保険者証番号))
+	    (hk kensin::受診券整理番号)
+	    (read-from-string kensin::性別))))
+
+(defstruct 167shibu code name h k m f total)
+
+(defun create-167shibu (code name size)
+  (let1 obj (make-167shibu :code code :name name)
+    (with-slots (h k m f total) obj
+      (setq h		(make-array `(,size) :initial-element 0)
+	    k		(make-array `(,size) :initial-element 0)
+	    m		(make-array `(,size) :initial-element 0)
+	    f		(make-array `(,size) :initial-element 0)
+	    total	(make-array `(,size) :initial-element 0))
+      obj)))
+
+(defun add-167shibu (obj hk sex)
+  ;; (declare (optimize speed) (type 167shibu obj)
+  ;; 	   (type fixnum hk sex))
+  (lambda (month)
+    (with-slots (h k m f total) obj
+      (let ((hkary  (vector 0 h k))
+	    (sexary (vector 0 m f)))
+	(aref-1+ (svref hkary hk) month)
+	(aref-1+ (svref sexary sex) month)
+	(aref-1+ total month)
+	(aref-1+ (svref hkary hk) 12)
+	(aref-1+ (svref sexary sex) 12)
+	(aref-1+ total 12)))))
+
+(defun generate-shibu-hash (size)
+  (iter (with hash = (make-hash-table :test #'equal))
+	(for (code . shibu) :in-shibu :long)
+	(for c = (read-from-string code))
+	(setf (gethash c hash)
+	      (create-167shibu c shibu size))
+	(finally (return hash))))
+
+(defun %classify (172data 167hash size function 167function)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (iter (with hash = (generate-shibu-hash size))
 	(for line :in 172data)
 	(for obj = (kensin::create-172data line))
 	(if (kensin::172-target? obj)
-	    (with-slots (kensin::受診券整理番号
-			 kensin::性別
-			 kensin::被保険者証記号
-			 kensin::被保険者証番号) obj
-	      (for shibu = (read-from-string
-			    (kensin::shibu kensin::被保険者証記号 kensin::被保険者証番号)))
-	      (for hk    = (hk kensin::受診券整理番号))
-	      (for sex   = (read-from-string kensin::性別))
-	      (for r167  = (gethash kensin::受診券整理番号 167hash))
-	      (for lv    = (car (kensin::r167-メタボレベル r167)))
-	      (aref-1+ sexary shibu sex lv)
-	      (aref-1+ hkary  shibu hk lv)))
-	(finally (return (values hkary sexary)))))
+	    (multiple-value-bind (jnum shibu-code hk sex)
+		(%r172-base-info obj)
+	      (for r167  = (gethash jnum 167hash))
+	      (funcall (funcall function (gethash shibu-code hash) hk sex)
+		       (funcall 167function r167))))
+	(finally (return hash))))
 
-(defun shibu-data (ary)
+;; (defparameter h
+;;   (%classify (kensin::%csvfile ksetting::*fkca172*)
+;; 	     (kensin::r167-hash ksetting::*fkac167*)
+;; 	     13
+;; 	     #'add-167shibu
+;; 	     #'%month))
+
+(defun figure (r167)
+  (declare (optimize speed) (type 167shibu r167))
+  (with-slots (h k m f total) r167
+    (mapcar (lambda (v) (coerce v 'list))
+	    (list total h k m f))))
+
+(defun vector-sum (v1 v2)
+  (map 'vector
+       #'+
+       (coerce v1 'list)
+       (coerce v2 'list)))
+
+;; (defun shibu-data-total (hash)
+;;   (let (zh zk zm zf zt)
+;;     (iter (for (k v) :in-hashtable hash)
+;; 	  (with-slots (h k m f total) v
+;; 	    (if (first-time-p)
+;; 		(setq zh h zk k zm m zf f zt total)
+;; 		(setq zh (vector-sum zh h)
+;; 		      zk (vector-sum zk k)
+;; 		      zm (vector-sum zm m)
+;; 		      zf (vector-sum zf f)
+;; 		      zt (vector-sum zt total))))
+;; 	  (finally (return (list zh zk zm zf zt))))))
+
+(defun shibu-data (hash)
   (iter (for (code . shibu) :in-shibu :long)
-	(for init = (%init (kensin::int code) ary))
-	(appending (mapcar (lambda (l) (append (butlast l) (list (apply #'+ l))))
-			   init))))
+	(for c = (read-from-string code))
+	(appending (figure (gethash c hash)))))
 
 (defclass SHEET (R172T::SHEET)
   ((title	 :initform (list (nendo-month-list :format "~A月")))
@@ -661,21 +739,69 @@
    (merge-cells  :initform (generate-merge-cells 5))
    (step1	 :initarg :step1)
    (step2	 :initarg :step2)
+   (172data	 :initarg :172data)
+   (167hash	 :initarg :167hash)
    (shibu-step   :initform 5)
    (shibu-row	 :initform 2)
    (shibu-col	 :initform :a)))
 
 (defmethod initialize-instance :after ((m SHEET) &rest args)
   (declare (ignorable args))
-  (with-slots (step1 step2 data) m
-    (setq step2  (%make-array step1)
-    	  data   (shibu-data step2))))
+  (with-slots (172data 167hash data) m
+    (setq data   (shibu-data
+		  (%classify 172data 167hash 13
+			     #'add-167shibu #'%month)))))
 
 (defpackage #:r172-metabo
   (:nicknames :r172m)
   (:use :cl :util :kensin :iterate :cl-win32ole :excel :r172t))
 
 (in-package :r172m) ;----------------------------------------------------------------------
+
+(defun %metabo-lv (r167)
+  (car (kensin::r167-メタボレベル r167)))
+
+(defun add-172metabo (obj hk sex)
+  (lambda (mlv)
+    (with-slots (r167::h r167::k r167::m r167::f r167::total) obj
+      (let ((hkary  (vector 0 r167::h r167::k))
+	    (sexary (vector 0 r167::m r167::f)))
+	(aref-1+ (svref hkary hk) (1- mlv))
+	(aref-1+ (svref sexary sex) (1- mlv))
+	(aref-1+ r167::total (1- mlv))
+	(aref-1+ (svref hkary hk) 3)
+	(aref-1+ (svref sexary sex) 3)
+	(aref-1+ r167::total 3)))))
+
+;; (r172m::shibu-data
+;; (r167::%classify (kensin::%csvfile ksetting::*fkca172*)
+;; 		 (kensin::r167-hash ksetting::*fkac167*)
+;; 		 4
+;; 		 #'r172m::add-172metabo
+;; 		 #'r172m::%metabo-lv))
+
+(defun figure-vector (vec)
+  (iter (with last = (svref vec 3))
+	(for n :from 0 :to 2)
+	(for s = (svref vec n))
+	(appending (list s (percent-or-nil s last))
+		   :into pot)
+	(finally (return (append pot (list last))))))
+
+(defun figure (r167)
+  (with-slots (r167::code r167::name
+	       r167::h r167::k r167::m r167::f r167::total) r167
+    `((,r167::code ,r167::name "" ,@(figure-vector r167::total))
+      ("" "" "" ,@(figure-vector r167::h))
+      ("" "" "" ,@(figure-vector r167::k))
+      ("" "" "" ,@(figure-vector r167::m))
+      ("" "" "" ,@(figure-vector r167::f)))))
+
+(defun shibu-data (hash)
+  (iter (for (code . shibu) :in-shibu :long)
+	(for c = (read-from-string code))
+	(appending (figure (gethash c hash)))))
+
 
 (defun %classify (172data 167hash)
   (iter (with sexary = (make-array '(96 3 5) :initial-element 0))
@@ -696,9 +822,6 @@
 	      (aref-1+ sexary shibu sex lv)
 	      (aref-1+ hkary  shibu hk lv)))
 	(finally (return (values hkary sexary)))))
-
-;; (%shibufy (kensin::%csvfile ksetting::*fkca172*)
-;; 	    (kensin::r167-hash ksetting::*fkac167*))
 
 (defstruct shibu
   code name
@@ -736,10 +859,7 @@
 		tm   (+ m1 m2 mo)
 		ttt  (+ lv1t lv2t ott)))))
     obj))
-;; (multiple-value-bind (hk sex)
-;;     (%classify (kensin::167init ksetting::*fkac167*))
-;;   (defparameter h hk)
-;;   (defparameter s sex))
+
 (defun %get-value (shibu-code array)
   (let ((start (+ (* shibu-code 15) 6)))
     (values (row-major-aref array start)
@@ -760,7 +880,7 @@
 	 ,ot (percent-or-nil ,ot ,tt)
 	 ,tt)))
 
-(defun figure (shibu)
+(defun figure2 (shibu)
   (declare (type shibu shibu))
   (with-slots (code name lv1h lv1k lv1f lv1m lv1t
 		    lv2h lv2k lv2f lv2m lv2t
@@ -777,7 +897,7 @@
   (multiple-value-bind (hk sex) (%classify 172data 167hash)
     (iter (for (code . sh) :in-shibu :long)
 	  (for c = (read-from-string code))
-	  (appending (figure (create-shibu c sh hk sex))))))
+	  (appending (figure2 (create-shibu c sh hk sex))))))
 
 (defclass SHEET (R172T::SHEET)
   ((title
@@ -785,15 +905,23 @@
    (borders-area :initform '("A1:J131"))
    (c-align-area :initform '("A2:C131" "A1:J1"))
    (enfont	 :initform '("C2:J131"))
+   (172data	 :initarg :172data)
+   (167hash	 :initarg :167hash)
    (data	 :initarg :data)
    (merge-cells  :initform (append (generate-merge-cells 5)
 				   (list "D1:E1" "F1:G1" "H1:I1")))))
 
 (defmethod initialize-instance :after ((m SHEET) &rest args)
   (declare (ignorable args))
-  (with-slots (data title r172t::endcol r172t::end) m
+  (with-slots (data title r172t::endcol r172t::end
+		    172data 167hash) m
     (setq r172t::endcol	(length (car title))
-	  r172t::end	(excel::number-to-col r172t::endcol))))
+	  r172t::end	(excel::number-to-col r172t::endcol)
+	  data		(shibu-data
+			 (r167::%classify 172data 167hash
+					  4
+					  #'add-172metabo
+					  #'%metabo-lv)))))
 
 (defpackage #:r172-internal
   (:nicknames :r172i)
@@ -962,12 +1090,13 @@
     (putEnFont      obj)
     (execMerge	    obj)))
 
-(defun %167sheet (book init)
+(defun %167sheet (book 172data 167hash)
   (declare (optimize safety debug))
   (let1 obj (make-instance 'R167::SHEET
 			   :book book
 			   :name "月別集計表"
-			   :step1 init)
+			   :172data 172data
+			   :167hash 167hash)
     (putData        obj)
     (putBorder      obj)
     (putCenterAlign obj)
@@ -978,8 +1107,9 @@
 (defun %metabo-sheet (book 172data 167hash)
   (let1 obj (make-instance 'R172M::SHEET
 			   :book book
-			   :name "月別集計表"
-			   :data (R172M::%shibufy 172data 167hash))
+			   :name "メタボリック判定別"
+			   :172data 172data
+			   :167hash 167hash)
     (putData        obj)
     (putBorder      obj)
     (putCenterAlign obj)
@@ -1032,23 +1162,35 @@
   (with-172-xls (book 172file 167file)
     (let* ((sh    (ole book :worksheets :item 1))
 	   (lr    (lastrow sh :y 1 :x 1))
-	   (csv   (%csvfile _172file_))
-	   (172h  (172-make-hash _172file_)))
+	   (csv   (%csvfile _172file_)))
       (set-column-width sh (:a :v) width1)
       (border sh (:a 2) (:v (1- lr)))
       (prog1
-	  ;; (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
-	  ;;     (r172t::classify csv)
-	  ;;   (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
-	  ;;   (r172i::%sex-year-sheet book syhash :step 5)
-	  ;;   (r172i::%hk-sheet       book syhash :step 5)
-	  ;;   (r172i::spec	      book syhash hkarray)
-	  ;;   (r172i::%hsido-sheet    book syhash hkarray hlvary))
-	  (let ((167init (kensin::167init _167file_)))
-	    (r172i::%167sheet book 167init)
-	    (r172i::%metabo-sheet book csv (r167-hash _167file_)))
-	  )
+      	  (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
+      	      (r172t::classify csv)
+      	    (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
+      	    (r172i::%sex-year-sheet book syhash :step 5)
+      	    (r172i::%hk-sheet       book syhash :step 5)
+      	    (r172i::spec	      book syhash hkarray)
+      	    (r172i::%hsido-sheet    book syhash hkarray hlvary))
+      	  (let ((167hash (r167-hash _167file_)))
+      	    (r172i::%167sheet book csv 167hash)
+      	    (r172i::%metabo-sheet book csv 167hash)))
       (excel::save-book book _172file_ :xlsx))))
+
+(defun 172base ()
+  (iter (with hash = (make-hash-table :test #'equal))
+	(for line :in-csv #P"f:/FKCA172_2012.csv" :code :SJIS)
+	(optima:match line
+	  ((LIST _)		  (next-iteration))
+	  ((LIST* _ "FKCA172" _)  (next-iteration))
+	  ((LIST* "保険者番号" _) (next-iteration))
+	  (_
+	   (let ((obj (create-172data line)))
+	     (if (172-target? obj)
+		 (setf (gethash (172data-指導メッセージID obj) hash)
+		       (cons obj (gethash (172data-指導メッセージID obj) hash)))))))
+	(finally (return hash))))
 
 ;; (defun get-shibu-list (ary shibu-code)
 ;;   (mapcar (lambda (n) (row-major-aref ary n))
