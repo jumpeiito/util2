@@ -14,6 +14,7 @@
 	     )
   保険者番号 被保険者証記号 被保険者証番号 個人番号 データ管理番号１ 性別 生年月日 被保険者名カナ 被保険者名漢字 資格フラグ 除外フラグ 受診券整理番号 保健指導レベル 服薬再確認 健診メッセージID 健診メッセージ 利用券整理番号 初回面接実施日 途中終了 指導未完了 指導メッセージID 指導メッセージ 支部)
 
+
 (defun create-172data (list)
   (let1 obj (apply #'172-gen list)
     (with-slots (生年月日 支部 被保険者証記号 被保険者証番号) obj
@@ -683,14 +684,12 @@
 (defun %classify (172data 167hash size function 167function)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (with hash = (generate-shibu-hash size))
-	(for line :in 172data)
-	(for obj = (kensin::create-172data line))
-	(if (kensin::172-target? obj)
-	    (multiple-value-bind (jnum shibu-code hk sex)
+	(for obj :in 172data)
+	(multiple-value-bind (jnum shibu-code hk sex)
 		(%r172-base-info obj)
 	      (for r167  = (gethash jnum 167hash))
 	      (funcall (funcall function (gethash shibu-code hash) hk sex)
-		       (funcall 167function r167))))
+		       (funcall 167function r167)))
 	(finally (return hash))))
 
 ;; (defparameter h
@@ -806,10 +805,8 @@
 (defun %classify (172data 167hash)
   (iter (with sexary = (make-array '(96 3 5) :initial-element 0))
 	(with hkary  = (make-array '(96 3 5) :initial-element 0))
-	(for line :in 172data)
-	(for obj = (kensin::create-172data line))
-	(if (kensin::172-target? obj)
-	    (with-slots (kensin::受診券整理番号
+	(for obj :in 172data)
+	(with-slots (kensin::受診券整理番号
 			 kensin::性別
 			 kensin::被保険者証記号
 			 kensin::被保険者証番号) obj
@@ -820,7 +817,7 @@
 	      (for r167  = (gethash kensin::受診券整理番号 167hash))
 	      (for lv    = (car (kensin::r167-メタボレベル r167)))
 	      (aref-1+ sexary shibu sex lv)
-	      (aref-1+ hkary  shibu hk lv)))
+	      (aref-1+ hkary  shibu hk lv))
 	(finally (return (values hkary sexary)))))
 
 (defstruct shibu
@@ -1135,11 +1132,17 @@
 	 ,@body))))
 
 ;; ()
-(defun %csvfile (file)
+(defun %file->csv (file)
   (nthcdr 2
 	  (csv-read-to-list (or file
 				(172-newest))
 			    :code :SJIS)))
+
+(defun %csvfile (csv)
+  (iter (for line :in csv)
+	(for obj = (create-172data line))
+	(if (172-target? obj)
+	    (collect obj))))
 
 (defun %167 ()
   (iter (with hash = (cl-store:restore #P"f:/167.2012.hash"))
@@ -1160,23 +1163,24 @@
 (defun 172-xls-main (&key 172file 167file)
   (declare (optimize safety debug))
   (with-172-xls (book 172file 167file)
-    (let* ((sh    (ole book :worksheets :item 1))
-	   (lr    (lastrow sh :y 1 :x 1))
-	   (csv   (%csvfile _172file_)))
+    (let* ((sh      (ole book :worksheets :item 1))
+	   (lr      (lastrow sh :y 1 :x 1))
+	   (csvdata (%file->csv _172file_))
+	   (csv     (%csvfile csvdata))
+	   (167hash (r167-hash _167file_)))
       (set-column-width sh (:a :v) width1)
       (border sh (:a 2) (:v (1- lr)))
       (prog1
       	  (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
-      	      (r172t::classify csv)
+      	      (r172t::classify csvdata)
       	    (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
       	    (r172i::%sex-year-sheet book syhash :step 5)
       	    (r172i::%hk-sheet       book syhash :step 5)
       	    (r172i::spec	      book syhash hkarray)
-      	    (r172i::%hsido-sheet    book syhash hkarray hlvary))
-      	  (let ((167hash (r167-hash _167file_)))
-      	    (r172i::%167sheet book csv 167hash)
-      	    (r172i::%metabo-sheet book csv 167hash)))
-      (excel::save-book book _172file_ :xlsx))))
+      	    (r172i::%hsido-sheet    book syhash hkarray hlvary)
+	    (r172i::%167sheet book csv 167hash)
+      	    (r172i::%metabo-sheet book csv 167hash))
+	(excel::save-book book _172file_ :xlsx)))))
 
 (defun 172base ()
   (iter (with hash = (make-hash-table :test #'equal))

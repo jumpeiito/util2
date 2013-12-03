@@ -93,11 +93,14 @@
 	(for line :in-csv file :code :SJIS)
 	(for row :upfrom 0)
 	(declare (type fixnum row))
-	(if (< row 2)
-	    (next-iteration)
-	    (let ((obj (create-r167 line)))
-	      (setf (gethash (r167-整理番号 obj) hash)
-		    obj)))
+	(optima:match line
+	  ((LIST* _ "FKAC167" _)  (next-iteration))
+	  ((LIST* "保険者番号" _) (next-iteration))
+	  ((LIST _)               (next-iteration))
+	  ((LIST* "00263129" _)
+	   (let ((obj (create-r167 line)))
+	     (setf (gethash (r167-整理番号 obj) hash)
+		   obj))))
 	(finally (return hash))))
 
 
