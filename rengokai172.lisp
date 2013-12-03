@@ -282,7 +282,7 @@
       (util::percent num div)))
 
 (defun generate-merge-cells (step)
-  (iter (for i :from 2 :to (+ 2 (* 25 step)) :by step)
+  (iter (for i :from 2 :to (+ 2 (* 26 step)) :by step)
 	(appending (list (format nil "A~A:A~A" i (+ (1- step) i))
 			 (format nil "B~A:B~A" i (+ (1- step) i))))))
 
@@ -491,112 +491,104 @@
 
 (in-package :r172h) ;----------------------------------------------------------------------
 
-(defstruct (hsido
-	     (:constructor hsido-init (code name lv1-h lv1-k lv1-m lv1-f lv2-h lv2-k lv2-m lv2-f)))
-  code name lv1-h lv1-k lv1-m lv1-f lv2-h lv2-k lv2-m lv2-f
-  other-h other-k other-m other-f total-h total-k total-m total-f
-  lv1-h% lv1-k% lv1-m% lv1-f% lv2-h% lv2-k% lv2-m% lv2-f%
-  other-h% other-k% other-m% other-f%)
+(defstruct hsido code name h k m f total size)
 
-(defun create-hsido (lv1 lv2 code main)
-  (let1 obj (hsido-init code (long-shibu code)
-			(+ (aref lv1 1 1) (aref lv1 2 1))
-			(+ (aref lv1 1 2) (aref lv1 2 2))
-			(+ (aref lv1 1 1) (aref lv1 1 2))
-			(+ (aref lv1 2 1) (aref lv1 2 2))
-			(+ (aref lv2 1 1) (aref lv2 2 1))
-			(+ (aref lv2 1 2) (aref lv2 2 2))
-			(+ (aref lv2 1 1) (aref lv2 1 2))
-			(+ (aref lv2 2 1) (aref lv2 2 2)))
-    (with-slots (lv1-m lv1-f lv1-h lv1-k
-		       lv2-m lv2-f lv2-h lv2-k
-		       other-h other-k other-m other-f
-		       total-h total-k total-m total-f
-		       lv1-m% lv1-f% lv1-h% lv1-k%
-		       lv2-m% lv2-f% lv2-h% lv2-k%
-		       other-h% other-k% other-m% other-f%) obj
-      (optima:match main
-	((list m f h k)
-	 (setq total-m   m
-	       total-f   f
-	       total-h   h
-	       total-k   k
-	       other-m   (- m lv1-m lv2-m)
-	       other-f   (- f lv1-f lv2-f)
-	       other-h   (- h lv1-h lv2-h)
-	       other-k   (- k lv1-k lv2-k)
-	       lv1-m%    (percent-or-nil lv1-m total-m)
-	       lv1-f%    (percent-or-nil lv1-f total-f)
-	       lv1-h%    (percent-or-nil lv1-h total-h)
-	       lv1-k%    (percent-or-nil lv1-k total-k)
-	       lv2-m%    (percent-or-nil lv2-m total-m)
-	       lv2-f%    (percent-or-nil lv2-f total-f)
-	       lv2-h%    (percent-or-nil lv2-h total-h)
-	       lv2-k%    (percent-or-nil lv2-k total-k)
-	       other-m%  (percent-or-nil other-m total-m)
-	       other-f%	 (percent-or-nil other-f total-f)
-	       other-h%	 (percent-or-nil other-h total-h)
-	       other-k%	 (percent-or-nil other-k total-k))))
+(defun create-hsido (code name size)
+  (let1 obj (make-hsido :code code :name name :size size)
+    (with-slots (h k m f total size) obj
+      (setq h (make-array `(,size) :initial-element 0)
+	    k (make-array `(,size) :initial-element 0)
+	    m (make-array `(,size) :initial-element 0)
+	    f (make-array `(,size) :initial-element 0)
+	    total (make-array `(,size) :initial-element 0))
       obj)))
 
-(defun %count (list hash)
-  (iter (with ary = (make-array '(3 3) :initial-element 0))
-	(for num :in (mapcar #'car list))
-	(aref-1+ ary (hk num) (jnum->sex num hash))
-	(finally (return ary))))
-;; -->
-;; (#2A((0 0 0) (0 男性本人 男性家族) (0 女性本人 女性家族)) #2A((0 0 0) (0 男性本人 男性家族) (0 女性本人 女性家族)))
-;; 左が積極的支援 右が動機付け支援
+(defun add-hsido (obj hlv hk sex)
+  (with-slots (h k m f total size) obj
+    (let ((vhk  (svref (vector 0 h k) hk))
+	  (vsex (svref (vector 0 m f) sex))
+	  (lv   (1- hlv)))
+      (aref-1+ vhk lv)
+      (aref-1+ vsex lv)
+      (aref-1+ total lv)
+      (aref-1+ vhk (1- size))
+      (aref-1+ vsex (1- size))
+      (aref-1+ total (1- size)))))
 
-(defun %calculate (lv code main hash)
-  (let* ((lv1 (%count (aref lv code 1) hash))
-	 (lv2 (%count (aref lv code 2) hash))
-	 (obj (create-hsido lv1 lv2 code main)))
-    (with-slots (code name
-		      lv1-m lv1-f lv1-h lv1-k
-		      lv2-m lv2-f lv2-h lv2-k
-		      other-h other-k other-m other-f
-		      total-h total-k total-m total-f
-		      lv1-m% lv1-f% lv1-h% lv1-k%
-		      lv2-m% lv2-f% lv2-h% lv2-k%
-		      other-h% other-k% other-m% other-f%) obj
-      `((,code ,name "合計"
-	       ,(+ lv1-m lv1-f)     ,(util::percent (+ lv1-m lv1-f) (+ total-m total-f))
-	       ,(+ lv2-m lv2-f)     ,(util::percent (+ lv2-m lv2-f) (+ total-m total-f))
-	       ,(+ other-m other-f) ,(util::percent (+ other-m other-f) (+ total-m total-f))
-	       ,(+ total-m total-f))
-	("" "" "男性" ,lv1-m ,lv1-m% ,lv2-m ,lv2-m% ,other-m ,other-m% ,total-m)
-	("" "" "女性" ,lv1-f ,lv1-f% ,lv2-f ,lv2-f% ,other-f ,other-f% ,total-f)
-	("" "" "本人" ,lv1-h ,lv1-h% ,lv2-h ,lv2-h% ,other-h ,other-h% ,total-h)
-	("" "" "家族" ,lv1-k ,lv1-k% ,lv2-k ,lv2-k% ,other-k ,other-k% ,total-k)))))
-
-(defun data (symain hkmain lv)
-  (iter (with hash = (cl-store:restore ksetting::*zenken-hash*))
-	(with sy   = (r172sp:filter symain))
-	(with hk   = (r172sp:filter hkmain))
+(defun generate-shibu-hash (size)
+  (iter (with hash = (make-hash-table :test #'equal))
 	(for (code . shibu) :in-shibu :long)
-	(for counter :upfrom 0)
-	(for l = (append (nth counter sy) (nth counter hk)))
 	(for c = (read-from-string code))
-	(appending (%calculate lv c l hash))))
+	(setf (gethash c hash)
+	      (create-hsido c shibu size))
+	(finally (return hash))))
+
+(defun %calculate (csvdata)
+  (iter (with hash = (generate-shibu-hash 5))
+	(for line :in csvdata)
+	(with-slots (kensin::支部
+		     kensin::性別
+		     kensin::受診券整理番号
+		     kensin::保健指導レベル) line
+	  (for shibu = (read-from-string kensin::支部))
+	  (for sex   = (read-from-string kensin::性別))
+	  (for hk    = (hk kensin::受診券整理番号))
+	  (for hlv   = (read-from-string kensin::保健指導レベル))
+	  (add-hsido (gethash shibu hash) hlv hk sex))
+	(finally (return hash))))
+
+(defun vector-figure (vec)
+  (optima:match vec
+    ((vector lv1 lv2 none other total)
+     (list lv1 (percent-or-nil lv1 total)
+	   lv2 (percent-or-nil lv2 total)
+	   none (percent-or-nil none total) 
+	   other (percent-or-nil other total) 
+	   total))))
+
+(defun figure (hsido)
+  (with-slots (code name h k m f total) hsido
+    (iter (for v :in (list total h k m f))
+	  (if (first-time-p)
+	      (collect `(,code ,name "" ,@(vector-figure v)))
+	      (collect `("" "" "" ,@(vector-figure v)))))))
+
+(defun shibu-data-total (hash)
+  (let (th tk tm tf tt)
+    (iter (for (k v) :in-hashtable hash)
+	  (with-slots (h k m f total) v
+	    (setf th (if th (vector-sum th h) h)
+		  tk (if tk (vector-sum tk k) k)
+		  tm (if tm (vector-sum tm m) m)
+		  tf (if tf (vector-sum tf f) f)
+		  tt (if tt (vector-sum tt total) total))))
+    (mapcar (lambda (v) `("" "" "" ,@(vector-figure v)))
+	    (list tt th tk tm tf))))
+
+(defun data (hash)
+  (iter (for (code . shibu) :in-shibu :long)
+	(for c = (read-from-string code))
+	(appending (figure (gethash c hash))
+		   :into pot)
+	(finally (return (append pot
+				 (shibu-data-total hash))))))
+
 
 (defclass SHEET (R172T::SHEET)
   ((title
-    :initform '(("支部CD" "支部" "" "積極的支援" "" "動機付支援" "" "その他" "" "合計")))
-   (borders-area :initform '("A1:J131"))
-   (c-align-area :initform '("A2:C131" "A1:J1"))
-   (enfont	 :initform '("C2:J131"))
+    :initform '(("支部CD" "支部" "" "積極的支援" "" "動機付支援" "" "情報提供" "" "その他" "" "合計")))
+   (borders-area :initform '("A1:L136"))
+   (c-align-area :initform '("A2:C136" "A1:L1"))
+   (enfont	 :initform '("C2:L136"))
    (data	 :initarg :data)
    (merge-cells  :initform (append (generate-merge-cells 5)
-				   (list "D1:E1" "F1:G1" "H1:I1")))
-   (hlv		 :initarg :array)
-   (sexmain	 :initarg :sexmain)
-   (hkmain	 :initarg :hkmain)))
+				   (list "D1:E1" "F1:G1" "H1:I1" "J1:K1")))
+   (172data	 :initarg :172data)))
 
 (defmethod initialize-instance :after ((m SHEET) &rest args)
   (declare (ignorable args))
-  (with-slots (sexmain hkmain hlv title data r172t::endcol r172t::end) m
-    (setq data		(data sexmain hkmain hlv)
+  (with-slots (sexmain hkmain hlv title data 172data r172t::endcol r172t::end) m
+    (setq data		(data (%calculate 172data))
 	  r172t::endcol	(length (car title))
 	  r172t::end	(excel::number-to-col r172t::endcol))))
 
@@ -606,28 +598,6 @@
 
 (in-package :r167) ;----------------------------------------------------------------------
 
-;; (defun %make-array (main)
-;;   (iter (with ary = (make-array '(96 13) :initial-element (list 0 0 0 0 0)))
-;; 	(for line :in main)
-;; 	(optima:match line
-;; 	  ((kensin::r167 kensin::支部 kensin::実施月 kensin::性別 kensin::整理番号)
-;; 	   (let1 m (if (< kensin::実施月 4) (+ kensin::実施月 9) (- kensin::実施月 4))
-;; 	     (setf (aref ary (kensin::int kensin::支部) m)
-;; 		   (mapcar #'+
-;; 			   (let1 l (list 1 0 0 0 0)
-;; 			     (setf (nth (sex kensin::性別) l) 1)
-;; 			     (setf (nth (+ 2 (hk kensin::整理番号)) l) 1)
-;; 			     l)
-;; 			   (aref ary (kensin::int kensin::支部) m))))))
-;; 	(finally (return ary))))
-
-;; (defun %init (shibu-code ary)
-;;   (reduce (lambda (x y)
-;; 	    (if y (mapcar #'cons x y) (mapcar #'list x)))
-;; 	  (mapcar (lambda (n) (aref ary shibu-code n))
-;; 		  (iota :from 0 :to 12))
-;; 	  :initial-value nil
-;; 	  :from-end t))
 (declaim (inline create-167shibu add-167shibu))
 
 (defun %month (r167)
@@ -692,48 +662,36 @@
 		       (funcall 167function r167)))
 	(finally (return hash))))
 
-;; (defparameter h
-;;   (%classify (kensin::%csvfile ksetting::*fkca172*)
-;; 	     (kensin::r167-hash ksetting::*fkac167*)
-;; 	     13
-;; 	     #'add-167shibu
-;; 	     #'%month))
-
 (defun figure (r167)
   (declare (optimize speed) (type 167shibu r167))
   (with-slots (h k m f total) r167
     (mapcar (lambda (v) (coerce v 'list))
 	    (list total h k m f))))
 
-(defun vector-sum (v1 v2)
-  (map 'vector
-       #'+
-       (coerce v1 'list)
-       (coerce v2 'list)))
-
-;; (defun shibu-data-total (hash)
-;;   (let (zh zk zm zf zt)
-;;     (iter (for (k v) :in-hashtable hash)
-;; 	  (with-slots (h k m f total) v
-;; 	    (if (first-time-p)
-;; 		(setq zh h zk k zm m zf f zt total)
-;; 		(setq zh (vector-sum zh h)
-;; 		      zk (vector-sum zk k)
-;; 		      zm (vector-sum zm m)
-;; 		      zf (vector-sum zf f)
-;; 		      zt (vector-sum zt total))))
-;; 	  (finally (return (list zh zk zm zf zt))))))
+(defun shibu-data-total (hash)
+  (let (th tk tm tf tt)
+    (iter (for (k v) :in-hashtable hash)
+	  (with-slots (h k m f total) v
+	    (setf th (if th (vector-sum th h) h)
+		  tk (if tk (vector-sum tk k) k)
+		  tm (if tm (vector-sum tm m) m)
+		  tf (if tf (vector-sum tf f) f)
+		  tt (if tt (vector-sum tt total) total))))
+    (mapcar (lambda (v) (coerce v 'list))
+	    (list tt th tk tm tf))))
 
 (defun shibu-data (hash)
   (iter (for (code . shibu) :in-shibu :long)
 	(for c = (read-from-string code))
-	(appending (figure (gethash c hash)))))
+	(appending (figure (gethash c hash)) :into pot)
+	(finally (return (append pot
+				 (shibu-data-total hash))))))
 
 (defclass SHEET (R172T::SHEET)
   ((title	 :initform (list (nendo-month-list :format "~A月")))
-   (borders-area :initform '("A1:P131"))
-   (enfont	 :initform '("C2:P131"))
-   (c-align-area :initform '("A2:B131" "A1:P1"))
+   (borders-area :initform '("A1:P136"))
+   (enfont	 :initform '("C2:P136"))
+   (c-align-area :initform '("A2:C136" "A1:P1"))
    (data	 :initarg :data)
    (merge-cells  :initform (generate-merge-cells 5))
    (step1	 :initarg :step1)
@@ -771,13 +729,6 @@
 	(aref-1+ (svref hkary hk) 3)
 	(aref-1+ (svref sexary sex) 3)
 	(aref-1+ r167::total 3)))))
-
-;; (r172m::shibu-data
-;; (r167::%classify (kensin::%csvfile ksetting::*fkca172*)
-;; 		 (kensin::r167-hash ksetting::*fkac167*)
-;; 		 4
-;; 		 #'r172m::add-172metabo
-;; 		 #'r172m::%metabo-lv))
 
 (defun figure-vector (vec)
   (iter (with last = (svref vec 3))
@@ -951,7 +902,12 @@
   (with-slots (r172t::sheet r172h::data r172h::title) m
     (decide-range-value r172t::sheet r172h::title :start-row 1)
     (decide-range-value r172t::sheet r172h::data
-			:start-row 2)))
+			:start-row 2)
+    (decide-range-value
+     r172t::sheet
+     (repeated-list 27 (mapcar #'list '("合計" "本人" "家族" "男性" "女性")))
+     :start-row 2
+     :start-column 3)))
 (defmethod putData ((m R167::SHEET))
   (with-slots (r172t::sheet r167::data r167::title) m
     (decide-range-value r172t::sheet r167::title
@@ -959,12 +915,22 @@
 			:start-column 4)
     (decide-range-value r172t::sheet r167::data
     			:start-row 2
-    			:start-column 4)))
+    			:start-column 4)
+    (decide-range-value
+     r172t::sheet
+     (repeated-list 27 (mapcar #'list '("合計" "本人" "家族" "男性" "女性")))
+     :start-row 2
+     :start-column 3)))
 (defmethod putData ((m R172m::SHEET))
   (with-slots (r172t::sheet r172m::data r172m::title) m
     (decide-range-value r172t::sheet r172m::title :start-row 1)
     (decide-range-value r172t::sheet r172m::data
-			:start-row 2)))
+			:start-row 2)
+    (decide-range-value
+     r172t::sheet
+     (repeated-list 27 (mapcar #'list '("合計" "本人" "家族" "男性" "女性")))
+     :start-row 2
+     :start-column 3)))
 
 (defmacro putAttribute (sym value attr &optional attr2)
   `(with-slots (,sym r172t::sheet) m
@@ -1074,13 +1040,11 @@
     (%spec-sheet book "内訳表(性別)" dock-sex sc-sex smain)
     (%spec-sheet book "内訳表(本人・家族別)" dock-hk sc-hk hkmain)))
 
-(defun %hsido-sheet (book symain hkmain lv)
+(defun %hsido-sheet (book 172data)
   (let1 obj (make-instance 'R172H::SHEET
 			   :book    book
 			   :name    "保健指導レベル別"
-			   :array   lv
-			   :sexmain symain
-			   :hkmain  hkmain)
+			   :172data 172data)
     (putData        obj)
     (putBorder      obj)
     (putCenterAlign obj)
@@ -1177,7 +1141,7 @@
       	    (r172i::%sex-year-sheet book syhash :step 5)
       	    (r172i::%hk-sheet       book syhash :step 5)
       	    (r172i::spec	      book syhash hkarray)
-      	    (r172i::%hsido-sheet    book syhash hkarray hlvary)
+	    (r172i::%hsido-sheet    book csv)
 	    (r172i::%167sheet book csv 167hash)
       	    (r172i::%metabo-sheet book csv 167hash))
 	(excel::save-book book _172file_ :xlsx)))))
@@ -1195,6 +1159,9 @@
 		 (setf (gethash (172data-指導メッセージID obj) hash)
 		       (cons obj (gethash (172data-指導メッセージID obj) hash)))))))
 	(finally (return hash))))
+
+(defparameter 172csv  (%csvfile (%file->csv ksetting::*fkca172*)))
+(defparameter 167hash (r167-hash ksetting::*fkac167*))
 
 ;; (defun get-shibu-list (ary shibu-code)
 ;;   (mapcar (lambda (n) (row-major-aref ary n))
