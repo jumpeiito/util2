@@ -806,8 +806,13 @@
 	  ((TYPE ATOM)
 	   (set-colorindex sheet (:a rows) (:o rows) :interior c)))))
 
+(defmacro %thread (&rest form)
+  `(sb-thread:make-thread
+    (lambda () ,@form)))
+
 (defun csvlist-xls (directory-string)
-  (declare (optimize (speed 0) (safety 3) (debug 3)))
+  (declare (optimize (speed 0) (safety 3) (debug 3))
+	   (ignorable directory-string))
   (with-excel (app :visible t :quit nil :debugger t)
     (with-excel-book (app book *csv-output* :close nil :debugger t)
       (let* ((sh (ole book :worksheets :item 1))

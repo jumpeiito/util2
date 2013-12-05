@@ -4,116 +4,143 @@
 
 (in-package :mb)
 
-(defvar *year*		2013)
+(defvar *year*		ksetting::*year*)
 (defvar *nendo-end*	(nendo-end *year*))
-(defvar *zenken-hash*	"f:/util2/meibo/zenken.id.hash")
+(defvar *file*		ksetting::*zenken-file*)
+(defvar *zenken-csv*	#P"f:/zenken.csv")
+(defvar *zenken-hash*	#P"f:/zenken.hash")
 
-(defclass MeiboCSV ()
-  ((pathname	:initarg :pathname
-		:accessor path->)
-   (shibu	:accessor shibu->)
-   (shibu-code	:accessor shibu-c->)
-   (body	:accessor body->)))
+(defun %to-zenken ()
+  (iter (with bhash = (kensin:bunkai-hash))
+	(for line :in-csv *file* :code :SJIS)
+	(for z = (zenken::create-zenken line bhash))
+	(if (and (not (first-time-p))
+		 (zenken::target? z ))
+	    (collect z))))
 
-(defclass MeiboLine ()
-  ((list	:initarg :list :accessor list->)
-   (jnumber	:accessor jnumber->)
-   (name	:accessor name->)
-   (furigana	:accessor furigana->)
-   (gender	:accessor gender->)
-   (birthday	:accessor birthday->)
-   (old		:accessor old->)
-   (kigo	:accessor kigo->)
-   (bango	:accessor bango->)
-   (hk		:accessor hk->)
-   (telnum	:accessor telnum->)
-   (knumber	:accessor knumber->)
-   (idnumber	:accessor idnumber->)))
+(defun make-zenken-store ()
+  (cl-store:store (%to-zenken) *zenken-csv*))
 
-;; #P"f:/util2/meibo/特定健診用氏名一覧19西_20131127.csv"
-(defun %pathname-parse (pathname)
-  (let ((name (pathname-name (make-pathname :defaults pathname))))
-    (cl-irregsexp:if-match-bind
-     ("特定健診用氏名一覧" (code (integer :length 2)) (shibu (string)) "_" _)
-     (the simple-string name)
-     (values code shibu))))
+(defun zenken-store ()
+  (unless (cl-fad:file-exists-p *zenken-csv*)
+    (make-zenken-store))
+  (cl-store:restore *zenken-csv*))
 
-(defun %get-body (pathname)
-  (iter (for line :in-csv pathname :code :SJIS)
-	(optima:match line
-	  ((LIST* "受診券整理番号" _)
-	   (next-iteration))
-	  ((LIST* _ _ _ _ birth _)
-	   (if (kensin::kensin-year?
-		(how-old birth *nendo-end*))
-	       (collect line))))))
+;; f:/util2/meibo/特定健診用氏名一覧56綾_20131127.csv
+(defun number-for-sort (line)
+  (optima:match line
+    ((LIST* jnum _ _ _ _ _ _ _ _ _ _ _ telnum _)
+     ;; (format nil "~A~A" telnum jnum)
+     telnum)))
 
-(defun %copy-zenken-file ()
-  (delete-file-if-exists
-   "f:/20130628/特定健診全件データ.csv")
-  (cl-fad:copy-file "d:/特定健診システム/特定健診CSV/特定健診全件データ.csv"
-		    "f:/20130628/特定健診全件データ.csv"))
+(defun kill-blank (string)
+  (ppcre:regex-replace-all "[　 ]{2,}" string ""))
 
-(defun %make-zenken-hash ()
-  (%copy-zenken-file)
-  (cl-store:store (zenken::id-hash "f:/20130628/特定健診全件データ.csv" *nendo-end*)
-		  *zenken-hash*))
+(defun kill-blank-literally (string)
+  (ppcre:regex-replace-all "[　 ]+" string ""))
 
-(defmethod initialize-instance :after ((m MeiboCSV) &rest args)
-  (declare (ignorable args))
-  (with-slots (pathname) m
-    (multiple-value-bind (code shibu)
-	(%pathname-parse pathname)
-      (setf (shibu-> m)		shibu
-	    (shibu-c-> m)	code
-	    (body-> m)		(%get-body pathname)))))
+(defun line-for-print (line bk)
+  (optima:match line
+    ((LIST* _ name furi gender birthday year k b hk ad pos tel _)
+     (format nil "~{~A~^,~}"
+	     (list k b bk name
+		   (kill-blank furi)
+		   hk gender birthday year ;; pos
+		   (kill-blank-literally ad)
+		   tel)))))
 
-(defmethod initialize-instance :after ((m MeiboLINE) &rest args)
-  (declare (ignorable args))
-  (with-slots (jnumber name furigana gender birthday old
-		       kigo bango hk telnum knumber idnumber) m
-    (optima:match (list-> m)
-      ((LIST* j n f g b o ki bg h _ _ tel kn _ id _)
-       (setq jnumber	j
-       	     name	n
-       	     furigana	f
-       	     gender	g
-       	     birthday	b
-       	     old	o
-       	     kigo	ki
-       	     bango	bg
-       	     hk		h
-       	     telnum	tel
-       	     knumber	kn
-       	     idnumber	id))
-      (_ (print (list-> m))))))
+(defun yet? (zenken)
+  (with-slots (zenken::受診日 zenken::発行日) zenken
+    (and (not zenken::受診日) (not zenken::発行日))))
 
-(defun figure (line)
-  (declare (type MeiboLINE line))
-  (with-slots (kigo bango hk name furigana gender birthday old telnum) line
-    (list kigo bango hk name furigana gender birthday old telnum)))
+(defun %csv-sort (list)
+  (sort2 list string< number-for-sort))
 
-(defun %make-hash (numlist)
-  (iter (with hash = (make-hash-table :test #'equal))
-	(for n :in numlist)
-	(setf (gethash n hash) 1)
-	(finally (return hash))))
+(defun on-csv? (zenken-obj)
+  (and zenken-obj (zenken::target? zenken-obj) (yet? zenken-obj)))
 
-(defun target-zenken (meibo)
-  (declare (type MeiboCSV meibo))
-  (iter (with hash = (cl-store:restore *zenken-hash*))
-	(for line :in (body-> meibo))
-	(for num = (zero-padding (nth 14 line) 9))
-	(optima:match (gethash num hash)
-	  ((LIST* _ nil _)
-	   (collect (make-instance 'MeiboLine :list line)
-	     :into pot))
-	  (_
-	   (next-iteration)))
-	(finally (return pot))))
+(defun %csv (filename)
+  (let (title)
+    (iter (with zhash = (cl-store:restore *zenken-hash*))
+	  (for line :in-csv filename :code :SJIS)
+	  (if (first-time-p)
+	      (progn
+		(setq title line)
+		(next-iteration)))
+	  (optima:match line
+	    ((LIST* jnum _)
+	     (for obj = (gethash jnum zhash))
+	     (if (on-csv? obj)
+		 (collect (cons (zenken::zenken-分会名 obj) line)
+		   :into pot))))
+	  (finally (return (append (list (line-for-print title "分会名"))
+				   (mapcar (lambda (c)
+					     (line-for-print (cdr c) (car c)))
+					   (%csv-sort pot))))))))
 
-(defun target (meibo numlist)
-  (declare (type MeiboCSV meibo))
-  (iter (with hash = (%make-hash numlist))
-	(for line :in (body-> meibo))
-	(print (zero-padding (nth 14 line) 9))))
+;; 特定健診用氏名一覧16東_20131127.csv
+(defun filename-parse (filename)
+  (let ((f (pathname-name
+	    (make-pathname :defaults filename))))
+    (cl-ppcre:register-groups-bind
+    	(code shibu)
+    	("特定健診用氏名一覧(\\d{2})(.)_\\d{8}.csv" f)
+      (values (read-from-string code)
+    	      shibu))))
+
+(defun %csv-newname (filename)
+  (multiple-value-bind (code shibu)
+      (filename-parse filename)
+    (make-pathname :defaults filename
+		   :name (format nil "電話名簿~A~A" code shibu))))
+
+(defun %csv-output (filename)
+  (call-with-output-file2 (%csv-newname filename)
+    (lambda (op)
+      (iter (for line :in (%csv filename))
+	    (write-line line op)))
+    :code :SJIS))
+
+;; #(10 6 9.5 12.5 12.5 12.5 5 5 11 6 12)
+
+(defparameter xls-width #(10 6 9.5 12.5 12.5 5 5 11 6 32 13))
+
+(defun %xls-width (sh)
+  (excel::set-colwidth sh xls-width))
+
+(defun %xls-align (sh)
+  (loop
+     :for row
+     :in '(:a :b :c :f :g :i)
+     :do  (setf (slot-value (ole sh :range (format nil "~A:~:*~A" row))
+			    :horizontalAlignment)
+		excel::xlcenter)))
+
+(defun row-topline-erase (sheet row)
+  (setf (slot-value (ole sheet :range (format nil "A~A:K~:*~A" row) :borders 8)
+			    :linestyle)
+		nil))
+
+;; (iter (generating line :in x)
+;;       (if (equal (last1 line) (last1 (next line)))
+;; 	  (print line)))
+
+(defun topline-erase (sh uv)
+  (iter (generating line :in uv)
+	(for row :upfrom 1)
+	(if (equal (last1 line) (last1 (next line)))
+	    (row-topline-erase sh row))))
+
+(defun %xls (filename)
+  (%csv-output filename)
+  (let ((newname (namestring (%csv-newname filename))))
+    (with-excel (app :visible t :quit nil)
+      (with-excel-book (app book newname :close nil)
+	(let* ((sh (ole book :Worksheets :item 1))
+	       (lr (lastrow sh))
+	       (uv (value sh (:a 1) (:k lr))))
+	  (%xls-width sh)
+	  (%xls-align sh)
+	  (borders sh :a 1 :k lr)
+	  (topline-erase sh uv)
+	  (set-alignment sh (:a 1) (:k 1)))))))

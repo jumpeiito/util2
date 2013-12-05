@@ -151,14 +151,14 @@
   (iter (for line :in-csv *dock-file* :code :SJIS)
 	(shash line :condition t :key #'car :value #'cdr)))
 
-;; (defparameter dock-hash (dock-hash-generator))
+(defparameter dock-hash (dock-hash-generator))
 
-;; (defun dock? (hcode year)
-;;   (aif (gethash hcode dock-hash)
-;;        (if (member year it :test #'equal)
-;; 	   (values (first it) (second it))
-;; 	   nil)
-;;        nil))
+(defun dock? (hcode year)
+  (aif (gethash hcode dock-hash)
+       (if (member year it :test #'equal)
+	   (values (first it) (second it))
+	   nil)
+       nil))
 
 (defparameter hospital-shibu-hash-gen
   (push-hash-table

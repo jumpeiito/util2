@@ -70,6 +70,8 @@
 (defvar *mtime-file*		"f:/util2/kserv/mtime.lisp")
 (defvar *zip-parse-file*	"y:/47伊東/zip-parse.csv")
 (defvar *zenken-hash*		"f:/zenken.hash")
+(defvar *zenken-file*		(or (cl-fad:file-exists-p #P"d:/特定健診システム/特定健診CSV/特定健診全件データ.csv")
+				    (cl-fad:file-exists-p #P"f:/20130628/特定健診全件データ.csv")))
 (defvar *fkca172*		"f:/FKCA172.csv")
 (defvar *fkac167*		"f:/FKAC167.csv")
 (defvar *year*			2013)

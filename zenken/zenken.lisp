@@ -87,7 +87,7 @@
 	    発行日	(date-string-normalize (strdt 発行日))
 	    受診日	(date-string-normalize (strdt 受診日))
 	    指導日	(date-string-normalize (strdt 指導日))
-	    分会名	(gethash (format nil "~A~A" 証支部 分会) bhash)
+	    分会名	(gethash (format nil "~A~A" 支部 分会) bhash)
 	    現支部	(if (equal "85" 証支部)
 			    (subseq (the string 保険証番号) 4 6)
 			    証支部)
@@ -107,10 +107,11 @@
 	   ;; (optimize (speed 3) (safety 0) (debug 0))
 	   (optimize (speed 0) (safety 3) (debug 3)))
   (optima:match obj
-    ((zenken 年度末年齢 途中取得日 途中喪失日)
+    ((zenken 年度末年齢 途中取得日 途中喪失日 除外)
      (let1 year (the integer (read-from-string 年度末年齢))
        (and (>= year 40) (< year 75)
-	    (not 途中取得日) (not 途中喪失日))))))
+	    (not 途中取得日) (not 途中喪失日)
+	    (equal "0" 除外))))))
 
 (defun to-data (filename)
   (iter (with bhash = (kensin:bunkai-hash))

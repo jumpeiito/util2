@@ -1022,7 +1022,8 @@
     (sb-thread:make-thread (lambda () ,form))))
 
 (defmacro forked-thread (form)
-  `(sb-thread:make-thread (lambda () ,form)))
+  `(sb-thread:make-thread
+    (lambda () ,form)))
 
 (defun get-thread-value (thread)
   (sb-thread::join-thread thread))
@@ -1033,7 +1034,31 @@
 	 (_167file_ (or 167file ksetting::*fkac167*))
 	 (csvdata (forked-thread (%file->csv _172file_)))
 	 (csv     (forked-thread (%csvfile (get-thread-value csvdata))))
-	 (167hash (forked-thread (r167-hash _167file_))))
+	 (167hash (forked-thread (r167-hash _167file_)))
+	 (class   (forked-thread (r172t::classify csvdata))))
+    (with-172-xls (book 172file 167file)
+      (let* ((sh      (ole book :worksheets :item 1))
+    	     (lr      (lastrow sh :y 1 :x 1)))
+    	(set-column-width sh (:a :v) width1)
+    	(border sh (:a 2) (:v (1- lr)))
+    	(prog1
+    	    (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
+    		(sb-thread::join-thread class)
+    	      (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
+    	      ;; (r172i::%sex-year-sheet book syhash :step 5)
+    	      ;; (r172i::%hk-sheet       book syhash :step 5)
+    	      (r172i::type2 book
+			    (get-thread-value csv)
+			    (get-thread-value 167hash)))
+    	  (excel::save-book book _172file_ :xlsx))))))
+
+(defun %%172-xls-main (&key 172file 167file)
+  (declare (optimize safety debug))
+  (let* ((_172file_ (or 172file ksetting::*fkca172*))
+	 (_167file_ (or 167file ksetting::*fkac167*))
+	 (csvdata (%file->csv _172file_))
+	 (csv     (%csvfile csvdata))
+	 (167hash (r167-hash _167file_)))
     (with-172-xls (book 172file 167file)
       (let* ((sh      (ole book :worksheets :item 1))
     	     (lr      (lastrow sh :y 1 :x 1)))
@@ -1045,9 +1070,7 @@
     	      (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
     	      ;; (r172i::%sex-year-sheet book syhash :step 5)
     	      ;; (r172i::%hk-sheet       book syhash :step 5)
-    	      (r172i::type2 book
-			    (get-thread-value csv)
-			    (get-thread-value 167hash)))
+    	      (r172i::type2 book csv 167hash))
     	  (excel::save-book book _172file_ :xlsx))))))
 
 (defparameter 172csv (%csvfile (%file->csv ksetting::*fkca172*)))
