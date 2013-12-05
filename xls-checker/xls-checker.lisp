@@ -708,8 +708,6 @@
 	  ((type NUMBER)
 	   (next-iteration))
 	  ((type STRING)
-	   ;; (check:value! sheet row col (& read-from-string to-hankaku cell))
-	   ;; (check:rcolor sheet ((check:num->col col) row))
 	   (when (not (equal (to-hankaku cell) cell))
 	     (check:value! sheet row col (& read-from-string to-hankaku cell))
 	     (check:rcolor sheet ((check:num->col col) row)))))))

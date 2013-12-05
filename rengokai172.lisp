@@ -135,19 +135,6 @@
 		  (+ l2 l1) (+ l1u l2u) (percent (+ l2u l1u) (+ l2 l1))
 		  (+ l1f l2f) (percent (+ l2f l1f) (+ l2 l1))))))
 
-;; (defun 172-hsido-total-output-xml (plist)
-;;   (let* ((l1	(getf plist :level1))
-;; 	 (l1u	(getf plist :level1-user))
-;; 	 (l1f	(getf plist :level1-finisher))
-;; 	 (l2	(getf plist :level2))
-;; 	 (l2u	(getf plist :level2-user))
-;; 	 (l2f	(getf plist :level2-finisher)))
-;;     (with-output-to-string (i "")
-;;       (cl-who:with-html-output (i)
-;; 	(cl-who:htm (:root
-;; 		     (:level1 :total l1 :user l1u :finisher l1f)
-;; 		     (:level2 :total l2 :user l2u :finisher l2f)))))))
-
 (defun 172-hsido-total (&optional (output-type :identity))
   "output-type  :identity :csv :xml :yaml"
   (let* ((mainhash (172-hsido-classify))
@@ -156,9 +143,7 @@
     (funcall
      (case output-type
        (:identity	#'identity)
-       (:csv		#'172-hsido-total-output-csv)
-       ;; (:xml		#'172-hsido-total-output-xml)
-       )
+       (:csv		#'172-hsido-total-output-csv))
      (list :level1          (length level1)
 	   :level1-user     (length (172-hsido-total-user level1))
 	   :level1-finisher (length (172-hsido-total-finisher level1))
@@ -420,11 +405,13 @@
 (defstruct unit h k m f total)
 
 (defun unit+ (unit1 unit2)
-  (make-unit :h (vector-sum (unit-h unit1) (unit-h unit2))
-	     :k (vector-sum (unit-k unit1) (unit-k unit2))
-	     :m (vector-sum (unit-m unit1) (unit-m unit2))
-	     :f (vector-sum (unit-f unit1) (unit-f unit2))
-	     :total (vector-sum (unit-total unit1) (unit-total unit2))))
+  (macrolet ((vsum (func)
+	       `(vector-sum (,func unit1) (,func unit2))))
+    (make-unit :h     (vsum unit-h)
+	       :k     (vsum unit-k)
+	       :m     (vsum unit-m)
+	       :f     (vsum unit-f)
+	       :total (vsum unit-total))))
 
 (defun create-unit (size)
   (make-unit :h (make-array (list size) :initial-element 0)
@@ -445,16 +432,94 @@
       (aref-1+ vsex len)
       (aref-1+ total len))))
 
+(defun dock-read ()
+  (iter (with hash = (make-hash-table :test #'equal))
+	(for line :in (csv-read-to-list ksetting::*dock-output-file*))
+	(optima:match line
+	  ((list* _ _ _ _ _ number "1" _)
+	   (setf (gethash number hash) 1)))
+	(finally (return hash))))
+
+(defun sc-read ()
+  (iter (with hash = (make-hash-table :test #'equal))
+	(for line :in (csv-read-to-list ksetting::*sc-output-file*))
+	(optima:match line
+	  ((list* num _)
+	   (setf (gethash num hash) 1)))
+	(finally (return hash))))
+
+(defun unit-last (unit)
+  (with-slots (h k m f total) unit
+    (optima:match h
+      ((TYPE VECTOR)
+       (let ((len (1- (length h))))
+	 (mapcar (lambda (v) (svref v len))
+		 (list total h k m f))))
+      ((TYPE FIXNUM)
+       (list total h k m f)))))
+
+(defun %list-expand (list)
+  (optima:match list
+    ((LIST k d s _t)
+     (list k (percent-or-nil k _t)
+	   d (percent-or-nil d _t)
+	   s (percent-or-nil s _t)
+	   _t))))
+
+(defun make-spec (total dock sc)
+  (let ((_total (unit-last total))
+	(_dock  (unit-last dock))
+	(_sc    (unit-last sc)))
+    (iter (for i :from 0 :to 4)
+	  (for _t = (nth i _total))
+	  (for _d = (nth i _dock))
+	  (for _s = (nth i _sc))
+	  (for _k = (- _t _d _s))
+	  (collect (%list-expand (list _k _d _s _t))))))
+
+(defun make-spec2 (total dock sc)
+  (let ((_total (unit-last total))
+	(_dock  (unit-last dock))
+	(_sc    (unit-last sc)))
+    (iter (for i :from 0 :to 4)
+	  (for _t = (nth i _total))
+	  (for _d = (nth i _dock))
+	  (for _s = (nth i _sc))
+	  (for _k = (- _t _d _s))
+	  (collect (list _k _d _s _t)))))
+
 (def-clojure shibu (code name)
   ((code	code)
    (name	name)
    (hsido	(create-unit 5))
    (167m	(create-unit 13))
-   (metabo	(create-unit 5)))
-  (:add (hk sex month hlv mlv)
-	(add 167m   hk sex month)
-	(add hsido  hk sex hlv)
-	(add metabo hk sex mlv)))
+   (metabo	(create-unit 5))
+   (dock	(make-unit :h 0 :k 0 :m 0 :f 0 :total 0))
+   (sc		(make-unit :h 0 :k 0 :m 0 :f 0 :total 0)))
+  (:add   (hk sex month hlv mlv)
+	  (add 167m   hk sex month)
+	  (add hsido  hk sex hlv)
+	  (add metabo hk sex mlv))
+  (:dock! (hk sex)
+	  (if (eq hk 1)
+	      (setf (unit-h dock) (1+ (unit-h dock)))
+	      (setf (unit-k dock) (1+ (unit-k dock))))
+	  (if (eq sex 1)
+	      (setf (unit-m dock) (1+ (unit-m dock)))
+	      (setf (unit-f dock) (1+ (unit-f dock))))
+	  (setf (unit-total dock) (1+ (unit-total dock))))
+  (:sc!   (hk sex)
+	  (if (eq hk 1)
+	      (setf (unit-h sc) (1+ (unit-h sc)))
+	      (setf (unit-k sc) (1+ (unit-k sc))))
+	  (if (eq sex 1)
+	      (setf (unit-m sc) (1+ (unit-m sc)))
+	      (setf (unit-f sc) (1+ (unit-f sc))))
+	  (setf (unit-total sc) (1+ (unit-total sc))))
+  (:spec  ()
+	  (make-spec hsido dock sc))
+  (:spec2 ()
+	  (make-spec2 hsido dock sc)))
 
 (defun generate-shibu ()
   (iter (with hash = (make-hash-table :test #'eq))
@@ -466,21 +531,31 @@
 
 (defun %classify (172data 167hash)
   (iter (with shibu-hash = (generate-shibu))
+	(with dock-hash  = (dock-read))
+	(with sc-hash    = (sc-read))
 	(for line :in 172data)
 	(with-slots (kensin::支部
 		     kensin::性別
 		     kensin::受診券整理番号
 		     kensin::保健指導レベル) line
+	  (for jnum  = kensin::受診券整理番号)
 	  (for shibu = (read-from-string kensin::支部))
 	  (for hlv   = (read-from-string kensin::保健指導レベル))
 	  (for sex   = (read-from-string kensin::性別))
-	  (for hk    = (hk kensin::受診券整理番号))
-	  (for r167  = (gethash kensin::受診券整理番号 167hash))
+	  (for hk    = (hk jnum))
+	  (for r167  = (gethash jnum 167hash))
 	  (for %m    = (kensin::r167-実施月 r167))
 	  (for month = (if (> %m 3) (- %m 3) (+ %m 9)))
 	  (for mlv   = (car (kensin::r167-メタボレベル r167)))
-	  (funcall (gethash shibu shibu-hash)
-		   :add hk sex month hlv mlv))
+	  (for %S%   = (gethash shibu shibu-hash))
+	  (funcall %S% :add hk sex month hlv mlv)
+	  (cond
+	    ((gethash jnum dock-hash)
+	     (funcall %S% :dock! hk sex))
+	    ((gethash jnum sc-hash)
+	     (funcall %S% :sc! hk sex))
+	    (t
+	     (next-iteration))))
 	(finally (return shibu-hash))))
 
 (defun figure-unit (unit)
@@ -520,6 +595,31 @@
 	  (finally (return (append pot
 				   (funcall f (%total-type hash sym))))))))
 
+(defun %list-abstract (list)
+  (optima:match list
+    ((LIST k _ d _ s _ t)
+     (list k d s t))))
+
+;; (list+ '((1 2 3) (4 5 6)) '((7 8 9) (10 11 12)))
+;; -> '((8 10 12) (14 16 18))
+(defun list+ (2dl1 2dl2)
+  (iter (for i :from 0 :to (1- (length 2dl1)))
+	(collect (mapcar #'+
+			 (nth i 2dl1)
+			 (nth i 2dl2)))))
+
+(defun %spec-total (hash)
+  (iter (with ret = nil)
+	(for (code . shibu) :in-shibu :long)
+	(for c   = (read-from-string code))
+	(for %s% = (gethash c hash))
+	(appending (funcall %s% :spec) :into pot)
+	(setq ret (if ret
+		      (list+ ret (funcall %s% :spec2))
+		      (funcall %s% :spec2)))
+	(finally (return (append pot
+				 (mapcar #'%list-expand ret))))))
+
 (defclass SHEET (R172T::SHEET)
   ((book         :initarg :book)
    (sheet        :initarg :sheet :accessor sheet-of)
@@ -537,7 +637,7 @@
    (shibu-col	 :initarg :shibu-col)
    (mainhash	 :initarg :mainhash)
    (symbol	 :initarg :symbol)
-   (data)
+   (data	 :initarg :data)
    (shibu-data)
    (merge-cells)))
 
@@ -557,9 +657,13 @@
 
 (defun make-merge-cells (symbol)
   (append (generate-merge-cells 5)
-	  (if (eq symbol :167m)
-	      nil
-	      (list "D1:E1" "F1:G1" "H1:I1" "J1:K1"))))
+	  ;; (if (eq symbol :167m)
+	  ;;     nil
+	  ;;     (list "D1:E1" "F1:G1" "H1:I1" "J1:K1"))
+	  (cond
+	    ((eq symbol :167m) nil)
+	    ((eq symbol :spec) (list "D1:E1" "F1:G1" "H1:I1"))
+	    (t (list "D1:E1" "F1:G1" "H1:I1" "J1:K1")))))
 
 (defun make-shibu-data ()
   (iter (for (code . shibu) :in-shibu :long)
@@ -575,7 +679,7 @@
   (with-slots (sheet book data symbol mainhash title borders-area
 		     name c-align-area enfont merge-cells shibu-data) s
     (setq sheet		(ole book :worksheets :item name)
-	  data		(%total mainhash symbol)
+	  ;; data		(%total mainhash symbol)
 	  borders-area	(make-borders-area title)
 	  c-align-area	(make-c-align title)
 	  enfont	(make-enfont title)
@@ -725,6 +829,8 @@
 
 (defmethod putBorder ((m R172T::SHEET))
   (putAttribute r172t::borders-area 1 :LineStyle :borders))
+(defmethod putBorder ((m R1721::SHEET))
+  (putAttribute r1721::borders-area 1 :LineStyle :borders))
 (defmethod putBorder ((m R172SP::SHEET))
   (putAttribute r172sp::borders-area 1 :LineStyle :borders))
 (defmethod putBorder ((m R1722::SHEET))
@@ -735,6 +841,8 @@
 
 (defmethod putCenterAlign ((m R172T::SHEET))
   (putAttribute r172t::c-align-area excel::xlcenter :HorizontalAlignment))
+(defmethod putCenterAlign ((m R1721::SHEET))
+  (putAttribute r1721::c-align-area excel::xlcenter :HorizontalAlignment))
 (defmethod putCenterAlign ((m R172SP::SHEET))
   (putAttribute r172sp::c-align-area excel::xlcenter :HorizontalAlignment))
 (defmethod putCenterAlign ((m R1722::SHEET))
@@ -742,6 +850,8 @@
 
 (defmethod putEnFont ((m R172T::SHEET))
   (putAttribute r172t::enfont "Times New Roman" :name :font))
+(defmethod putEnFont ((m R1721::SHEET))
+  (putAttribute r1721::enfont "Times New Roman" :name :font))
 (defmethod putEnFont ((m R172SP::SHEET))
   (putAttribute r172sp::enfont "Times New Roman" :name :font))
 (defmethod putEnFont ((m R1722::SHEET))
@@ -754,6 +864,8 @@
 
 (defmethod execMerge ((m R172T::SHEET))
   (putAttribute r172t::merge-cells t :MergeCells))
+(defmethod execMerge ((m R1721::SHEET))
+  (putAttribute r1721::merge-cells t :MergeCells))
 (defmethod execMerge ((m R172SP::SHEET))
   (putAttribute r172sp::merge-cells t :MergeCells))
 (defmethod execMerge ((m R1722::SHEET))
@@ -790,6 +902,9 @@
     (putEnFont      obj)
     (execMerge	    obj)))
 
+;; (defparameter x (r1721::dock-read
+;; 		 (cl-store:restore ksetting::*zenken-hash*)))
+
 (defun spec (book sexmain hkmain)
   (let* ((hash     (cl-store:restore ksetting::*zenken-hash*))
 	 (dock     (r1721::dock-read hash))
@@ -803,6 +918,16 @@
     (%spec-sheet book "内訳表(性別)" dock-sex sc-sex smain)
     (%spec-sheet book "内訳表(本人・家族別)" dock-hk sc-hk hkmain)))
 
+(defun type2-spec (book hash)
+  (make-instance 'r1722::sheet
+		 :book book
+		 :name  "内訳表"
+		 :title '(("支部CD" "支部" "" "支部健診" ""
+			   "人間ドック" "" "特定健診" ""
+			    "合計"))
+		 :data  (r1722::%spec-total hash)
+		 :symbol :spec))
+
 (defun type2-hsido (book hash)
   (make-instance 'r1722::sheet
 		 :book book
@@ -810,8 +935,9 @@
 		 :title '(("支部CD" "支部" "" "積極的支援" ""
 			   "動機付支援" "" "なし" ""
 			   "その他" "" "合計"))
-		 :mainhash hash
-		 :symbol :hsido))
+		 ;; :mainhash hash
+		 :symbol :hsido
+		 :data  (r1722::%total hash :hsido)))
 
 (defun type2-167month (book hash)
   (make-instance 'r1722::sheet
@@ -821,7 +947,7 @@
 			   "4月" "5月" "6月" "7月" "8月" "9月"
 			   "10月" "11月" "12月" "1月" "2月" "3月"
 			   "合計"))
-		 :mainhash hash
+		 :data  (r1722::%total hash :167m)
 		 :symbol :167m))
 
 (defun type2-metabo (book hash)
@@ -832,12 +958,13 @@
 			   "基準該当" "" "予備群該当" ""
 			   "情報提供" "" "その他" ""
 			   "合計"))
-		 :mainhash hash
+		 :data  (r1722::%total hash :metabo)
 		 :symbol :metabo))
 
 (defun type2 (book 172data 167hash)
   (let* ((hash  (R1722::%CLASSIFY 172data 167hash)))
-    (dolist (obj (list (type2-167month book hash)
+    (dolist (obj (list (type2-spec book hash)
+		       (type2-167month book hash)
 		       (type2-hsido book hash)
 		       (type2-metabo book hash)))
       (putData        obj)
@@ -858,11 +985,9 @@
 (defmacro with-172-xls ((book-sym 172file 167file) &rest body)
   `(excel:with-excel
        (app :visible %visible% :quit nil :debugger %debugger%)
-     (let ((_172file_ (or ,172file ,ksetting::*fkca172*))
-	   (_167file_ (or ,167file ,ksetting::*fkac167*)))
-       (excel:with-excel-book
-	   (app ,book-sym _172file_ :close nil :debugger %debugger%)
-	 ,@body))))
+     (excel:with-excel-book
+	 (app ,book-sym _172file_ :close nil :debugger %debugger%)
+       ,@body)))
 
 (defun %file->csv (file)
   (nthcdr 2
@@ -892,42 +1017,39 @@
 	(if (172-target? obj)
 	    (collect (gethash jnum hash)))))
 
+(defmacro 172-thread (form)
+  `(sb-thread:join-thread
+    (sb-thread:make-thread (lambda () ,form))))
+
+(defmacro forked-thread (form)
+  `(sb-thread:make-thread (lambda () ,form)))
+
+(defun get-thread-value (thread)
+  (sb-thread::join-thread thread))
+
 (defun 172-xls-main (&key 172file 167file)
   (declare (optimize safety debug))
-  (with-172-xls (book 172file 167file)
-    (let* ((sh      (ole book :worksheets :item 1))
-	   (lr      (lastrow sh :y 1 :x 1))
-	   (csvdata (%file->csv _172file_))
-	   (csv     (%csvfile csvdata))
-	   (167hash (r167-hash _167file_)))
-      (set-column-width sh (:a :v) width1)
-      (border sh (:a 2) (:v (1- lr)))
-      (prog1
-      	  (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
-      	      (r172t::classify csvdata)
-      	    (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
-      	    (r172i::%sex-year-sheet book syhash :step 5)
-      	    (r172i::%hk-sheet       book syhash :step 5)
-      	    (r172i::spec	      book syhash hkarray)
-	    (r172i::type2 book csv 167hash))
-	(excel::save-book book _172file_ :xlsx)))))
+  (let* ((_172file_ (or 172file ksetting::*fkca172*))
+	 (_167file_ (or 167file ksetting::*fkac167*))
+	 (csvdata (forked-thread (%file->csv _172file_)))
+	 (csv     (forked-thread (%csvfile (get-thread-value csvdata))))
+	 (167hash (forked-thread (r167-hash _167file_))))
+    (with-172-xls (book 172file 167file)
+      (let* ((sh      (ole book :worksheets :item 1))
+    	     (lr      (lastrow sh :y 1 :x 1)))
+    	(set-column-width sh (:a :v) width1)
+    	(border sh (:a 2) (:v (1- lr)))
+    	(prog1
+    	    (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
+    		(r172t::classify csvdata)
+    	      (declare (ignorable s k1 k2 syhash hkarray hlvhash hlvary))
+    	      ;; (r172i::%sex-year-sheet book syhash :step 5)
+    	      ;; (r172i::%hk-sheet       book syhash :step 5)
+    	      (r172i::type2 book
+			    (get-thread-value csv)
+			    (get-thread-value 167hash)))
+    	  (excel::save-book book _172file_ :xlsx))))))
 
-;; (defun 172base ()
-;;   (iter (with hash = (make-hash-table :test #'equal))
-;; 	(for line :in-csv #P"f:/FKCA172_2012.csv" :code :SJIS)
-;; 	(optima:match line
-;; 	  ((LIST _)		  (next-iteration))
-;; 	  ((LIST* _ "FKCA172" _)  (next-iteration))
-;; 	  ((LIST* "保険者番号" _) (next-iteration))
-;; 	  (_
-;; 	   (let ((obj (create-172data line)))
-;; 	     (if (172-target? obj)
-;; 		 (setf (gethash (172data-指導メッセージID obj) hash)
-;; 		       (cons obj (gethash (172data-指導メッセージID obj) hash)))))))
-;; 	(finally (return hash))))
-
-;; (defparameter 172csv  (%csvfile (%file->csv ksetting::*fkca172*)))
-;; (defparameter 167hash (r167-hash ksetting::*fkac167*))
 (defparameter 172csv (%csvfile (%file->csv ksetting::*fkca172*)))
 (defparameter 167hash (r167-hash ksetting::*fkac167*))
 
