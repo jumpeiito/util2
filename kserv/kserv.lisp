@@ -230,7 +230,8 @@
   (setcontract-reader)
   (dock-writer)
   (make-zenken-hash-store)
-  (create-mtime-hash))
+  (create-mtime-hash)
+  (make-parse-file))
 
 (defun watch-execute-force ()
   (setcontract-reader     :force t)

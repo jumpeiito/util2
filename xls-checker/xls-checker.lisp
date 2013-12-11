@@ -311,16 +311,19 @@
     (check:rcolor sheet (:c row))))
 
 (defun name-repair (sheet)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (format t "氏名欄の修正~%")
-  (iter (for (line) :in (value sheet (:c 6) (:c (lastrow sheet :y 6 :x 3))))
+  (iter (for (line) :in (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3))))
 	(for row :upfrom 6)
-	(declare (type fixnum row))
+	;; (declare (type fixnum row))
 	(cond
+	  ;; 正常なもの
 	  ((scan "([^ 　]+)　([^ 　]+)" line)
 	   nil)
+	  ;; 修正可能なもの
 	  ((scan ".+[ 　]+.+" line)
 	   (%name-repair sheet row line))
+	  ;; 修正不可のもの。目視で確認
 	  (t
 	   (check:fcolor sheet (:c row))))))
 
@@ -336,7 +339,7 @@
   (let* ((colnum #[contents :bcol])
 	 (col (excel::number-to-col colnum)))
     (format t "生年月日欄の修正~%")
-    (iter (for (line) :in (value sheet (col 6) (col (lastrow sheet :y 6 :x colnum))))
+    (iter (for (line) :in (value sheet (col 6) (col (lastrow sheet :y 5 :x colnum))))
 	  (for row :upfrom 6)
 	  (%bformat sheet row col)
 	  (cond
@@ -736,22 +739,33 @@
 ;; f:/20130628/kmove/2013.06.15特定健診データ簡易入力シートVer4.0.0 (1).xls
 ;; f:/20130628/kmove/2013.06.29特定健診データ簡易入力シートVer4.0.0 (1).xls
 ;; f:/20130628/kmove/2013.6.1特定健診データ簡易入力シートVer4.0.0 (1).xls
-(defun file-main (file)
+(defun %core (excel-application filename &key (close nil))
+  (let ((f (namestring filename)))
+    (with-excel-book (excel-application b f :close close :debugger t)
+      (let* ((sheet    (ole b :worksheets :item "健診結果入力シート"))
+	     (hash     (check-code:info b))
+	     (contents (sheet-contents sheet hash)))
+	;; (check-body:repair sheet contents)
+	(check-base:name-repair sheet)
+	(check-base:birthday-repair sheet contents)
+	(check-base:insurance-repair sheet)
+	(check-hba1c:repair b sheet contents)
+	(check-relative:repair sheet contents)
+	(check-available:repair sheet contents)
+	(check-must:repair sheet contents)
+	(check-either:repair sheet contents)
+	(check-hanzen:repair sheet contents)
+	(excel::save-book b #[contents :newfile f] :xls)))))
+
+(defun file-main (file &key (quit nil) (close nil))
   (declare (optimize (speed 0) (safety 3) (debug 3)))
-  (let ((f (namestring file)))
-    (with-excel (app :visible t :quit nil :debugger t)
-      (with-excel-book (app b f :close nil :debugger t)
-	(let* ((sheet    (ole b :worksheets :item "健診結果入力シート"))
-	       (hash     (check-code:info b))
-	       (contents (sheet-contents sheet hash)))
-	  ;; (check-body:repair sheet contents)
-	  (check-base:name-repair sheet)
-	  (check-base:birthday-repair sheet contents)
-	  (check-base:insurance-repair sheet)
-	  (check-hba1c:repair b sheet contents)
-	  (check-relative:repair sheet contents)
-	  (check-available:repair sheet contents)
-	  (check-must:repair sheet contents)
-	  (check-either:repair sheet contents)
-	  (check-hanzen:repair sheet contents)
-	  (excel::save-book b #[contents :newfile f] :xls))))))
+  (with-excel (app :visible t :quit quit :debugger t)
+    (%core app file :close close)))
+
+(defun directory-main (directory)
+  (with-excel (app :visible t :quit nil :debugger t)
+  (mapc
+   (lambda (file) (%core app file :close t))
+   (directory-list directory :type "xls"))))
+
+;; y:/23吉田/未処理/20131210 太子道診療所/特定健診データ簡易入力シートVer5.4.0 20130812.xls
