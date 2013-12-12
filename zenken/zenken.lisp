@@ -190,15 +190,15 @@
 ;; 			  (list 保険証番号 生年月日 氏名 途中取得日 途中喪失日
 ;; 				受診日 健診機関 支部 分会 班 分会名 現支部))))))
 
-;; (defun complex-hash2 (filename)
-;;   (iter (for line :in (to-data filename))
-;; 	(phash line
-;; 	       :condition t
-;; 	       :key   (lambda (o) (with-zenken-slot o (list 氏名 生年月日)))
-;; 	       :value (lambda (o)
-;; 			(with-zenken-slot o
-;; 			  (list 整理番号 保険証番号 生年月日 氏名 途中取得日 途中喪失日
-;; 				受診日 健診機関 支部 分会 班 分会名 現支部))))))
+(defun complex-hash2 (filename)
+  (iter (for line :in (to-data filename))
+	(phash line
+	       :condition t
+	       :key   (lambda (o) (with-zenken-slot o (list 氏名 生年月日)))
+	       :value (lambda (o)
+			(with-zenken-slot o
+			  (list 整理番号 保険証番号 生年月日 氏名 途中取得日 途中喪失日
+				受診日 健診機関 支部 分会 班 分会名 現支部))))))
 
 (defun hash () (make-hash %file))
 
@@ -241,5 +241,54 @@
 		 (setf (aref array (read-from-string shibu) month)
 		       (cons hospital (aref array (read-from-string shibu) month)))))))
 	(finally (return array))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (defparameter x (cl-store:restore #P"f:/zenken.csv"))
+
+;; (defun _f (date)
+;;   (util::date-8 date))
+
+;; (defun hot2 ()
+;;   (iter (with hash = (hot1))
+;; 	(for line
+;; 	  :in (cdr (call-with-input-file2 "ito" #'read)))
+;; 	(optima:match line
+;; 	  ((LIST* nil _)
+;; 	   (next-iteration))
+;; 	  ((LIST* d _ _ _ _ birth sex _)
+;; 	   (let ((key (format nil "~A~A~A" (truncate d) birth sex)))
+;; 	     (aif (gethash key hash)
+;; 		  (next-iteration)
+;; 		  (collect line)))))))
+
+;; (iter (with hash = (make-hash-table :test #'equal))
+;;       (for line :in (hot2))
+;;       (aif (gethash line hash)
+;; 	   (error line)
+;; 	   (setf (gethash line hash) line)))
+
+;; (defun hot1 ()
+;;   (iter (with hash = (make-hash-table :test #'equal))
+;; 	(for line :in (to-data ksetting::*zenken-file*))
+;; 	(with-slots (年度末支部 支部 氏名 生年月日 受診日 健診機関 性別) line
+;; 	  (if (and (equal "10" 年度末支部)
+;; 		   (equal "上京" 健診機関))
+;; 	      (setf (gethash (format nil "~A~A~A"
+;; 				     (util::date-8 受診日)
+;; 				     (util::date-8 生年月日)
+;; 				     性別)
+;; 			     hash)
+;; 		    1)))
+;; 	(finally (return hash))))
+
+;; (defun ho3 ()
+;;   (with-excel (ap :visible t :quit nil)
+;;     (with-excel-book (ap bk "f:/20131025/伊東.xlsx" :close nil)
+;;       (let* ((sh (ole bk :WorkSheets :Item 1))
+;; 	     (uv (slot-value (ole sh :UsedRange) :Value)))
+;; 	(iter (for line :in uv)
+;; 	      (optima:match (car line)
+;; 		((TYPE FLOAT)
+;; 		 )))))))
 
 (in-package :cl-user)

@@ -230,14 +230,14 @@
   (setcontract-reader)
   (dock-writer)
   (make-zenken-hash-store)
-  (create-mtime-hash)
-  (make-parse-file))
+  (create-mtime-hash))
 
 (defun watch-execute-force ()
   (setcontract-reader     :force t)
   (dock-writer            :force t)
   (make-zenken-hash-store :force t)
-  (create-mtime-hash))
+  (create-mtime-hash)
+  (make-parse-file))
 
 (defun to-string (dt)
   (format nil "~A/~2,'0d/~2,'0d ~2,'0d:~2,'0d:~2,'0d"

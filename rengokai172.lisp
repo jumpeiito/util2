@@ -204,6 +204,7 @@
 	(with hkarray        = (make-array2))
 	(with hlv            = (make-hash-table :test #'equal))
 	(with sidoary        = (make-array3))
+	;; エントリポイント
 	(for line :in csvdata)
 	(for obj = (kensin::create-172data line))
 	(with-slots (kensin::指導メッセージ
@@ -212,22 +213,29 @@
 	    obj
 	  (optima:match (list kensin::指導メッセージ kensin::資格フラグ)
 	    ((LIST mes _)
+	     ;; 指導メッセージが入っているものを除外
 	     (if (string-not-null mes)
 		 (progn
 		   (collect obj :into sido)
 		   (next-iteration))
 		 (optima:fail)))
+	    ;; 年度途中加入者
 	    ((LIST _ "1")
 	     (collect obj :into kensin1)
 	     (next-iteration))
+	    ;; 年度途中脱退者
 	    ((LIST _ "2")
 	     (collect obj :into kensin2)
 	     (next-iteration)))
-	  (let ((shibu (kensin::int kensin::支部)) (sex (kensin::int kensin::性別))
+	  (let ((shibu (kensin::int kensin::支部))
+		(sex (kensin::int kensin::性別))
 		(hk (if (ppcre:scan "1$" kensin::受診券整理番号) 1 2))
 		(year  (jnum-how-old kensin::生年月日 kensin::受診券整理番号)))
+	    ;; 男女別
 	    (aref-1+   sex-year-array shibu sex year)
+	    ;; 本人・家族別
 	    (aref-1+   hkarray shibu hk year)
+	    ;; 保健指導レベル別
 	    (aref-cons sidoary (list kensin::受診券整理番号 year)
 		       shibu (kensin::int kensin::保健指導レベル))
 	    (push-hash kensin::支部 kensin::保健指導レベル hlv)))
@@ -1024,22 +1032,47 @@
   `(sb-thread:join-thread
     (sb-thread:make-thread (lambda () ,form))))
 
-(defmacro forked-thread (form)
+(defmacro fork (form)
   `(sb-thread:make-thread
     (lambda () ,form)))
 
 (defun get-thread-value (thread)
   (sb-thread::join-thread thread))
 
+(defun check-167-year-difference-get-jnum (167file)
+  (call-with-input-file2 167file
+    (lambda (in)
+      (labels ((inner (c)
+		  (if (eq c 2)
+		      (nth 9 (split "," (read-line in)))
+		      (progn
+			(read-line in)
+			(inner (1+ c))))))
+	(inner 0)))
+    :code :SJIS))
+
+(defun check-167-year-difference (167file)
+  (unless (equal ksetting::*year*
+		 (+ 2000
+		    (string-take
+		     (read-from-string
+		      (check-167-year-difference-get-jnum 167file)
+		      2))))
+    (error "167ファイルの年度と設定された年度が違います。")))
+
+(defun get-167hash (167file)
+  (check-167-year-difference 167file)
+  (fork (r167-hash 167file)))
+
 (defun 172-xls-main (&key 172file 167file)
   ;; (declare (optimize safety debug))
   (declare (optimize speed))
   (let* ((_172file_ (or 172file ksetting::*fkca172*))
 	 (_167file_ (or 167file ksetting::*fkac167*))
-	 (csvdata (forked-thread (%file->csv _172file_)))
-	 (csv     (forked-thread (%csvfile (get-thread-value csvdata))))
-	 (167hash (forked-thread (r167-hash _167file_)))
-	 (class   (forked-thread (r172t::classify csvdata))))
+	 (csvdata (fork (%file->csv _172file_)))
+	 (csv     (fork (%csvfile (get-thread-value csvdata))))
+	 (167hash (fork (r167-hash _167file_)))
+	 (class   (fork (r172t::classify csvdata))))
     (with-172-xls (book 172file 167file)
       (let* ((sh      (ole book :worksheets :item 1))
     	     (lr      (lastrow sh :y 1 :x 1)))

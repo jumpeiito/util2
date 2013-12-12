@@ -48,6 +48,40 @@
 	    (format *standard-output* "以下のファイルが重複しました。~%")
 	    (format *standard-output* "~{~A~%~}" duplist))))))
 
+(defun dir/comp
+    (src-dir dest-dir exhash-thread &key (type :copy))
+  ;;; コピー元・コピー先のディレクトリがなければ作動しない。
+  (let1 exhash (join-thread exhash-thread)
+    (let1 duplist nil
+      (util::stdout "元: ~A~%" src-dir)
+      (util::stdout "先: ~A~%" dest-dir)
+      ;; 本体
+      (cl-fad:walk-directory
+       src-dir
+       (lambda (path)
+	 (if
+	  ;; 拡張子が"zip"で、ファイル名が英数字から成っていて、コピー先に同名のファイルがない。
+	  ;; コピー先にファイルがあるかどうかの判断は、ディレクトリを除いたファイル名の部分だけで
+	  ;; 判断する。
+	  (and (equal "zip" (pathname-type path))
+	       (cl-ppcre:scan "^[-A-z0-9_]+$" (pathname-name path))
+	       (not (gethash (pathname-name path) exhash nil)))
+	  (progn
+	    (format *standard-output* "~A ~%=> ~A~%"
+		    path (dest-path dest-dir path))
+	    (handler-case (funcall (case type
+				     (:copy   #'cl-fad:copy-file)
+				     (:rename #'rename-file)
+				     (t       (lambda (p d) (print (list p d)))))
+				   path (dest-path dest-dir path))
+	      ;; 重複したときに発生するエラー
+	      (#+sbcl sb-int:simple-file-error
+		#+clisp system::simple-file-error (e)
+		(setq duplist (cons (list path (dest-path dest-dir path)) duplist))))))))
+      (when duplist
+	(format *standard-output* "以下のファイルが重複しました。~%")
+	(format *standard-output* "~{~A~%~}" duplist)))))
+
 (defun mkdir (directory)
   (iter (for dir :in (list "FKAC163" "FKAC165" "FKAC167" "FKAC168" "FKCA172" "TKAC" "MAIN"
 			   "FKAC522_ERR" "FKAC053_ERR" "FKBD053_ERR" "FKAB351_ERR"
@@ -116,16 +150,47 @@
 		(rename-file zip (path+ newdir zip))))))
   (util::stdout "~Aを整理しました。~%" directory))
 
+;; (defun move ()
+;;   (directory-compare #P"y:/23吉田/未処理/" #P"d:/zip/" :type :rename)
+;;   (directory-compare #P"g:/" #P"d:/zip/")
+;;   (directory-compare #P"d:/zip/" #P"f:/zip/")
+;;   (directory-compare #P"f:/zip/" #P"d:/zip/")
+;;   (directory-classify #P"d:/zip/")
+;;   (main-build #P"d:/zip/MAIN/")
+;;   (directory-classify #P"f:/zip/")
+;;   (main-build #P"f:/zip/MAIN/"))
+
+(defmacro when-file-exist (&rest files)
+  `(and ,@(mapcar (lambda (f) `(file-exists-p ,f)) files)))
+
+(defun make-hash-thread (directory)
+  (make-thread (lambda () (exist-hash directory))))
+
 (defun move ()
-  (directory-compare #P"y:/23吉田/未処理/" #P"d:/zip/" :type :rename)
-  (directory-compare #P"g:/" #P"d:/zip/")
-  (directory-compare #P"d:/zip/" #P"f:/zip/")
-  (directory-compare #P"f:/zip/" #P"d:/zip/")
-  (directory-classify #P"d:/zip/")
-  (main-build #P"d:/zip/MAIN/")
-  (directory-classify #P"f:/zip/")
-  (main-build #P"f:/zip/MAIN/")
-  )
+  (if (when-file-exist #P"d:/" #P"f:/" #P"g:/")
+      (let ((f-thread (make-hash-thread #P"f:/zip/"))
+	    (d-thread (make-hash-thread #P"d:/zip/")))
+	(dir/comp #P"y:/23吉田/未処理/" #P"d:/zip/" d-thread :type :rename)
+	(dir/comp #P"g:/" #P"d:/zip/" d-thread)
+	(dir/comp #P"d:/zip/" #P"f:/zip/" f-thread)
+	(dir/comp #P"f:/zip/" #P"d:/zip/" d-thread)
+	(make-thread
+	 (lambda ()
+	   (directory-classify #P"d:/zip/")
+	   (main-build #P"d:/zip/MAIN/")))
+	(make-thread
+	 (lambda ()
+	   (directory-classify #P"f:/zip/")
+	   (main-build #P"f:/zip/MAIN/"))))))
+
+;; Evaluation took:
+;;   38.135 seconds of real time
+;;   11.809275 seconds of total run time (2.340015 user, 9.469260 system)
+;;   [ Run times consist of 0.126 seconds GC time, and 11.684 seconds non-GC time. ]
+;;   30.97% CPU
+;;   118,019,024,091 processor cycles
+;;   198,286,840 bytes consed
+
 
 ;; (for-each
 ;;  (lambda (b)
