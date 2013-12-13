@@ -242,6 +242,166 @@
 		       (cons hospital (aref array (read-from-string shibu) month)))))))
 	(finally (return array))))
 
+(defpackage :zenken-calc
+  (:nicknames #:zc)
+  (:use #:cl #:util #:kensin #:iterate #:zenken)
+  (:import-from #:zenken #:to-data)
+  (:import-from #:optima #:match)
+  (:import-from #:alexandria
+		#:hash-table-keys
+		#:hash-table-values
+		#:hash-table-alist
+		#:alist-hash-table))
+
+(in-package #:zenken-calc)
+
+(defvar file ksetting::*zenken-file*)
+(defvar vecfile ksetting::*zenken-vec-file*)
+
+(declaim (inline string->code translate))
+
+(defun string->code (str)
+  (match str
+    ((or "本人" "男") 1)
+    ((or "家族" "女") 2)
+    ("0000000000"     nil)
+    (_ t)))
+
+(defun translate (line number)
+  (match number
+    ((or 1 9 24 25) (read-from-string (nth (1- number) line)))
+    ((or 6 7 16)    (string->code (nth (1- number) line)))))
+
+(defstruct bunkai shibu-code shibu-name code name h k m f total)
+
+(defun make-bunkai-array ()
+  (make-array '(2 76) :initial-element 0))
+
+(defun make-bunkai-hash ()
+  (iter (with hash = (make-hash-table :test #'eq))
+	(for (k v) :in-hashtable (kensin::bunkai-hash))
+	(for shibu = (string-take k 2))
+	(setf (gethash (read-from-string k) hash)
+	      (make-bunkai :shibu-code shibu
+			   :shibu-name (long-shibu shibu)
+			   :code k
+			   :name v
+			   :h (make-bunkai-array)
+			   :k (make-bunkai-array)
+			   :m (make-bunkai-array)
+			   :f (make-bunkai-array)
+			   :total (make-bunkai-array)))
+	(finally (return hash))))
+
+(defmacro bunkai+ (bunkai func hit year &key (total t))
+  `(progn
+     (when ,hit
+       (aref-1+ (,func ,bunkai) 0 ,year)
+       ,(if total
+	    `(aref-1+ (bunkai-total ,bunkai) 0 ,year)))
+     (aref-1+ (,func ,bunkai) 1 year)
+     ,(if total
+	  `(aref-1+ (bunkai-total ,bunkai) 1 ,year))))
+
+(defun bunkai-h+ (bunkai hit year)
+  (bunkai+ bunkai bunkai-h hit year))
+(defun bunkai-k+ (bunkai hit year)
+  (bunkai+ bunkai bunkai-k hit year))
+(defun bunkai-m+ (bunkai hit year)
+  (bunkai+ bunkai bunkai-m hit year :total nil))
+(defun bunkai-f+ (bunkai hit year)
+  (bunkai+ bunkai bunkai-f hit year :total nil))
+
+(defun to-vector (line)
+  (map 'vector
+       (lambda (n) (translate line n))
+       ;; hit shibu hx sex year-old shibu bunkai
+       (list 16 1 6 7 9 24 25)))
+
+(defun to-array (file)
+  (iter (with hash = (make-bunkai-hash))
+	(for line :in-csv file :code :SJIS)
+	(match line
+	  ((LIST* "年度末支部" _) (next-iteration))
+	  ((LIST  "") (next-iteration))
+	  (_
+	   (match (to-vector line)
+	     ((VECTOR hit shibu hk sex year-old _ bunkai)
+	      (aif (gethash (+ (* 100 shibu) bunkai) hash)
+		   (progn
+		     (match hk
+		       (1 (bunkai-h+ it hit year-old))
+		       (2 (bunkai-k+ it hit year-old)))
+		     (match sex
+		       (1 (bunkai-m+ it hit year-old))
+		       (2 (bunkai-f+ it hit year-old))))
+		   (next-iteration)))
+	     ((TYPE NULL)
+	      (next-iteration)))))
+	(finally (return hash))))
+
+(defun vec-read ()
+  (alist-hash-table
+   (call-with-input-file2 vecfile #'read)
+   :test #'eq))
+
+(defun bunkais ()
+  (sort2 (mapcar #'read-from-string
+		 (remove-if
+		  (lambda (k) (or (ppcre:scan "^90" k)
+				  (ppcre:scan "^95" k)))
+		  (hash-table-keys (kensin::bunkai-hash))))
+	 < identity))
+
+;; 2次元配列を開始位置から終了位置を指定して抜き出す。
+(defun row-major-aref-list (array from to &key (plus 0))
+  (mapcar (lambda (n) (row-major-aref array (+ plus n)))
+	  (iota :from from :to to)))
+
+(defun row-major-aref-sum (array from to &key (plus 0))
+  (apply #'+ (row-major-aref-list array from to :plus plus)))
+
+(defvar yearlist '((0 20) (21 30) (31 40) (41 50) (51 60) (61 70) (71 75)))
+
+(defun figure (bunkai plus)
+  (with-slots (h k m f total) bunkai
+    (iter (for l :in (list total h k m f))
+	  (collect
+	      (util::append-total1	;; 列ごとの合計をとる
+	       (iter (for (start end) :in yearlist)
+		     (collect (row-major-aref-sum l start end :plus plus))))))))
+
+(defun percent-or-nil (num div)
+  (if (eq div 0)
+      "-"
+      (util::percent num div)))
+
+(defun figure0 (bunkai)
+  (let ((l1 (figure1 bunkai))
+	(l2 (figure2 bunkai)))
+    (with-slots (shibu-name name) bunkai
+      (mapcar
+       (lambda (x1 x2) (append (list shibu-name name)
+			       x2
+			       x1
+			       (mapcar #'percent-or-nil x2 x1)))
+       l1 l2))))
+(defun figure1 (bunkai) (figure bunkai 76))
+(defun figure2 (bunkai) (figure bunkai 0))
+
+(defun %calc ()
+  (let ((hash (vec-read)))
+    (mapcan (lambda (n) (figure0 (gethash n hash)))
+	    (bunkais))))
+  
+(in-package :zenken)
+
+(defun vec-output ()
+  (call-with-output-file2 zc::vecfile
+    (lambda (op)
+      (write (alexandria:hash-table-alist
+	      (zc::to-array zc::file))
+	     :stream op))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; (defparameter x (cl-store:restore #P"f:/zenken.csv"))
 
@@ -290,5 +450,8 @@
 ;; 	      (optima:match (car line)
 ;; 		((TYPE FLOAT)
 ;; 		 )))))))
+
+(defun calc ()
+  (zc::%calc))
 
 (in-package :cl-user)

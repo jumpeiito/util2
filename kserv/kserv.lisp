@@ -203,6 +203,7 @@
       (util::stdout "全件データのハッシュ作成開始~%")
       (cl-store:store (zenken::make-jusinken-hash file)
 		      ksetting::*zenken-hash*)
+      (zenken:vec-output)
       (util::stdout "全件データのハッシュ作成終了~%"))))
 
 (defun make-zenken-array-store ()

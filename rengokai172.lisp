@@ -773,6 +773,36 @@
 	  r172t::endcol	(length (car title))
 	  r172t::end	(excel::number-to-col r172t::endcol))))
 
+(defpackage #:r172-zenken
+  (:nicknames #:r172z)
+  (:use :cl :util :kensin :iterate :cl-win32ole :excel :r172t))
+
+(in-package #:r172z)
+
+(defclass SHEET (R172T::SHEET)
+  ((title
+    :initform '(("支部名" "分会名" "-20歳" "20歳台" "30歳台" "40歳台" "50歳台" "60歳台" "70歳台" "合計"
+		 "-20歳" "20歳台" "30歳台" "40歳台" "50歳台" "60歳台" "70歳台" "合計")))
+   (borders-area)
+   (c-align-area)
+   (merge-cells)
+   (enfont)
+   (lastrow)
+   (data	 :initarg :data)))
+
+(defmethod initialize-instance :after ((m SHEET) &rest args)
+  (declare (ignorable args))
+  (with-slots (data borders-area c-align-area merge-cells lastrow) m
+    (setq lastrow		(1+ (length data))
+	  borders-area	(format nil "A1:Z~A" lastrow)
+	  c-align-area	(list
+			 (format nil "A1:B~A" lastrow)
+			 "A1:Z1")
+	  merge-cells	(iter (for h :from 2 :to (- lastrow 4) :by 5)
+			      (appending (list (format nil "A~A:A~A" h (+ h 4))
+					       (format nil "B~A:B~A" h (+ h 4)))))
+	  enfont	(format nil "C1:Z~A" lastrow))))
+
 (defpackage #:r172-internal
   (:nicknames :r172i)
   (:use :cl :util :kensin :iterate :cl-win32ole :excel :r172t))
@@ -784,7 +814,9 @@
 (defgeneric putCenterAlign (sh))
 (defgeneric putEnFont      (sh))
 (defgeneric execMerge      (sh))
+(defgeneric execWidth      (sh))
 (defgeneric PutShibu (obj))
+
 
 (defmethod putData ((m R1721::SHEET))
   (with-slots (r172t::sheet r1721::data1 r1721::data2 r172t::title) m
@@ -823,6 +855,16 @@
      r1722::shibu-data
      :start-row 2)))
 
+(defmethod putData ((m R172Z::SHEET))
+  (with-slots (r172z::data r172z::title) m
+    (decide-range-value
+     (r172t::sheet-of m)
+     r172z::data
+     :start-row 2)
+    (decide-range-value
+     (r172t::sheet-of m)
+     r172z::title)))
+
 (defmacro putAttribute (sym value attr &optional attr2)
   `(with-slots (,sym r172t::sheet) m
      (iter (for range :in ,sym)
@@ -849,6 +891,21 @@
     (setf (slot-value (slot-value (ole (r1722::sheet-of m) :range r1722::borders-area) :Borders)
 		      :LineStyle)
 	  1)))
+(defmethod putBorder ((m R172Z::SHEET))
+  (with-slots (r172Z::borders-area r172z::lastrow) m
+    (setf (slot-value (slot-value (ole (r172t::sheet-of m) :range r172Z::borders-area) :Borders)
+		      :LineStyle)
+	  1)
+    (iter (for row :from 2 :to r172z::lastrow :by 5)
+	  (setf (slot-value
+		 (ole (r172t::sheet-of m) :Range (format nil "A~A:Z~:*~A" row) :Borders 8)
+		 :Weight)
+		3))
+    (iter (for col :in '(:b :j :r))
+	  (setf (slot-value
+		 (ole (r172t::sheet-of m) :Range (format nil "~A:~:*~A" col) :Borders 10)
+		 :Weight)
+		3))))
 
 (defmethod putCenterAlign ((m R172T::SHEET))
   (putAttribute r172t::c-align-area excel::xlcenter :HorizontalAlignment))
@@ -858,6 +915,8 @@
   (putAttribute r172sp::c-align-area excel::xlcenter :HorizontalAlignment))
 (defmethod putCenterAlign ((m R1722::SHEET))
   (putAttribute2 r1722::c-align-area excel::xlcenter :HorizontalAlignment))
+(defmethod putCenterAlign ((m R172Z::SHEET))
+  (putAttribute r172Z::c-align-area excel::xlcenter :HorizontalAlignment))
 
 (defmethod putEnFont ((m R172T::SHEET))
   (putAttribute r172t::enfont "Times New Roman" :name :font))
@@ -872,6 +931,13 @@
 		       :font)
 	   :name)
 	  "Times New Roman")))
+(defmethod putEnFont ((m R172Z::SHEET))
+  (with-slots (r172Z::enfont) m
+    (setf (slot-value
+	   (slot-value (ole (r172T::sheet-of m) :range r172Z::enfont)
+		       :font)
+	   :name)
+	  "Times New Roman")))
 
 (defmethod execMerge ((m R172T::SHEET))
   (putAttribute r172t::merge-cells t :MergeCells))
@@ -881,6 +947,13 @@
   (putAttribute r172sp::merge-cells t :MergeCells))
 (defmethod execMerge ((m R1722::SHEET))
   (putAttribute2 r1722::merge-cells t :MergeCells))
+(defmethod execMerge ((m R172Z::SHEET))
+  (putAttribute r172Z::merge-cells t :MergeCells))
+
+(defmethod execWidth ((m R172Z::SHEET))
+  (setf (slot-value (ole (R172T::SHEET-of m) :Range "C:R")
+		    :ColumnWidth)
+	4.5))
 
 (defun %type1-sheet (book ary name category &key (step 5))
   (let1 obj (make-instance 'R1721::SHEET
@@ -984,6 +1057,18 @@
       (putEnFont      obj)
       (execMerge    obj))))
 
+(defun zenken-sheet (book)
+  (let1 obj (make-instance 'r172z::sheet
+			   :book book
+			   :name "分会別"
+			   :data (zenken:calc))
+    (putData obj)
+    (putBorder obj)
+    (putCenterAlign obj)
+    ;; (putEnFont obj)
+    (execMerge obj)
+    (execWidth obj)))
+
 (in-package :kensin) ;----------------------------------------------------------------------
 
 (defparameter width1 #(8 10 7 8 8 3 9 8 13 8 8 12 3 3 8 20 12 9 3 3 8 20))
@@ -1085,8 +1170,9 @@
     	      ;; (r172i::%sex-year-sheet book syhash :step 5)
     	      ;; (r172i::%hk-sheet       book syhash :step 5)
     	      (r172i::type2 book
-			    (get-thread-value csv)
-			    (get-thread-value 167hash)))
+	      		    (get-thread-value csv)
+	      		    (get-thread-value 167hash))
+	      (r172i::zenken-sheet book))
     	  (excel::save-book book _172file_ :xlsx))))))
 
 ;; (defun %%172-xls-main (&key 172file 167file)
