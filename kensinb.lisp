@@ -1,4 +1,4 @@
-;; (eval-when (:load-toplevel :compile-toplevel :execute)
+﻿;; hoge(eval-when (:load-toplevel :compile-toplevel :execute)
 ;;   (require :cl-ppcre)
 ;;   (load-lib "iterate")
 ;;   (load-lib "util")
