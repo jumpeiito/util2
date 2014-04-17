@@ -1,10 +1,4 @@
-﻿;; (eval-when (:load-toplevel :compile-toplevel :execute)
-;;   (require :cl-ppcre)
-;;   (load-lib "iterate")
-;;   (load-lib "util")
-;;   (load-lib "list")
-;;   (load-lib "hash"))
-(in-package :kensin)
+﻿(in-package :kensin)
 
 (defun filename-basename (pathname)
   (format nil "~A\.~A"
