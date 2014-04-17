@@ -1,5 +1,4 @@
-﻿(in-package :kensin)
-
+(in-package :kensin)
 (defun filename-basename (pathname)
   (format nil "~A\.~A"
 	  (pathname-name pathname)
@@ -283,3 +282,4 @@
   (if (ppcre:scan "1$" jnumber) 1 2))
 
 (in-package :cl-user)
+
