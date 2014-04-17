@@ -4,4 +4,8 @@
   (:import-from :cl-fad #:file-exists-p)
   (:export #:to-data
 	   #:vec-output
-	   #:calc))
+	   #:calc
+	   #:iterate
+	   #:make-jusinken-hash
+	   #:filter-map
+	   #:shibu-list))

@@ -4,7 +4,8 @@
 (defpackage :rece
   (:nicknames :rece)
   (:use :cl :util :iterate :cl-win32ole :excel)
-  (:export #:main))
+  (:export #:main)
+  (:import-from #:optima #:match))
 
 (in-package :rece)
 
@@ -89,7 +90,7 @@
 
 (defun csvdata (csvfile)
   (iter (for line :in-csv csvfile :code :UTF-8)
-	(optima:match line
+	(match line
 	  ((list* a b c d e _ f g h i j)
 	   (collect (list a b c d e f g h i
 			  (rece-date j)))))))
@@ -109,17 +110,24 @@
 		 (if (eq (car subl) (+ start plus))
 		     (in (cdr subl) start (1+ plus) r)
 		     (in (cdr subl) (car subl) 1 (cons (list start plus) r))))))
-    (in number-list (car number-list) 0 nil)))
+    (if number-list
+	(in number-list (car number-list) 0 nil)
+	nil)))
 
 (defun remove-lines (csvdata)
   (iter (for line :in csvdata)
   	(for row :upfrom 2)
-  	(optima:match line
-  	  ((LIST* _ _ type _)
-  	   (if (or (string= type "原審")
-  		   (string= type "再審査返戻")
-  		   (string= type "差戻"))
-  	       (collect row))))))
+  	;; (optima:match line
+  	;;   ((LIST* _ _ type _)
+  	;;    (if (or (string= type "原審")
+  	;; 	   (string= type "再審査返戻")
+  	;; 	   (string= type "差戻"))
+  	;;        (collect row))))
+	(match line
+	  ((or (LIST* _ _ "原審" _)
+	       (LIST* _ _ "再審査返戻" _)
+	       (LIST* _ _ "差戻" _))
+	   (collect row)))))
 
 (defgeneric month-gap (date1 date2))
 (defmethod  month-gap ((d1 DT:DATE-TIME) (d2 DT:DATE-TIME))
@@ -203,7 +211,7 @@
 (defun SetFont (csv)
   (with-slots (sheet lastrow) csv
     (set-fontname sheet (:a 1) (:v lastrow)
-		  "ＭＳ明朝")
+		  "ＭＳ Ｐ明朝")
     (set-fontname sheet (:a 1) (:v lastrow)
 		  "Times New Roman")))
 
@@ -228,11 +236,12 @@
 ;;; -> '((1 2 3 4) 6 (8 9))
 (defun MainOperate (csv)
   (with-slots (sheet lastrow remove outdate) csv
-    (iter (for range :in outdate)
-    	  (setf (slot-value (ole sheet :range range :Interior)
-    	  		    :ColorIndex)
-    	  	excel::xlgray25))
-    (iter (for range :in remove)
+    (if outdate
+	(iter (for range :in outdate)
+	      (setf (slot-value (ole sheet :range range :Interior)
+				:ColorIndex)
+		    excel::xlgray25)))
+    (iter (for range :in (reverse remove))
     	  (ole sheet :range range :delete))
     (setf (slot-value (ole sheet :range (format nil "~A:~A" 2 (lastrow sheet)))
 		      :RowHeight)

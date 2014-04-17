@@ -663,22 +663,14 @@
 			(aif zenken::途中喪失日
 			     (concatenate 'string it "(喪失)") "")))
 	       (nil ""))
-	     (optima:match (gethash number 172hash)
-	       ((LIST 172data)
-		;; (optima:match 172data
-		;;   ((KENSIN::172DATA kensin::健診メッセージ kensin::指導メッセージ)
-		;; (if (and (string-null kensin::健診メッセージ)
-		;; 	    (string-null kensin::指導メッセージ))
-		;;        "○"
-		;;        (format nil "~A,~A"
-		;; 	       kensin::健診メッセージ kensin::指導メッセージ))))
-		(with-slots (kensin::健診メッセージ kensin::指導メッセージ) 172data
-		  (if (and (string-null kensin::健診メッセージ)
-			   (string-null kensin::指導メッセージ))
-		      "○"
-		      (format nil "~A,~A"
-			      kensin::健診メッセージ kensin::指導メッセージ))))
-	       (nil "×"))))))
+	     (aif (gethash number 172hash)
+		  (with-slots (r172c::健診メッセージ r172c::指導メッセージ) it
+		    (if (and (string-null r172c::健診メッセージ)
+			     (string-null r172c::指導メッセージ))
+			"○"
+			(format nil "~A,~A"
+				r172c::健診メッセージ r172c::指導メッセージ)))
+		  "×")))))
 
 (defmethod out ((c CSV) (zhash hash-table) (172hash hash-table) (op stream))
   (declare (optimize (speed 3) (safety 0)))
@@ -690,7 +682,7 @@
 		   (pathname-name pathname)
 		   (out line zhash 172hash op))))))
 
-(defvar *csv-output* "f:/util2/csv/temp.csv")
+(defvar *csv-output* ksetting::*csv-output-file*)
 
 (defun csvlist (directory-string)
   (with-open-file (o *csv-output*
@@ -702,8 +694,8 @@
 	      "整理番号" "支部" "番号" "氏名" "生年月日"
 	      "必須" "選択" "相関" "取得・喪失"))
     (iter (with zhash = (cl-store:restore ksetting::*zenken-hash*))
-	  ;; (with zhash = (zenken::make-jusinken-hash #P"f:/20130628/特定健診全件データ.csv"))
-      	  (with hash  = (kensin::172-hash))
+      	  ;; (with hash  = (kensin::172-hash))
+	  (with hash  = (r172c::172-hash))
 	  (for file :in (directory-list-csv directory-string))
 	  (out (create-csv file) zhash hash o))))
 
@@ -831,7 +823,7 @@
   (> (apply #'+ (line-errors l)) 0))
 
 (defun error-by-personal ()
-  (iter (with 172hash = (kensin::172-hash))
+  (iter (with 172hash = (r172c::172-hash))
 	(for csv :in-directory topdir :type "csv")
 	(for instance = (create-csv csv))
 	(appending (iter (for line :in (csv-body instance))
@@ -847,8 +839,8 @@
 					(line-name line))
 				  (line-errors line)
 				  (aif (gethash (line-number line) 172hash)
-				       (list "○" (kensin::172data-資格フラグ (car it))
-					     (kensin::172data-健診メッセージ (car it)))
+				       (list "○" (r172c::172data-資格フラグ (car it))
+					     (r172c::172data-健診メッセージ (car it)))
 				       (list "" "" "")))))))))
 
 (defun error-by-personal-print (&optional op)

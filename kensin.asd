@@ -1,7 +1,7 @@
 (asdf:defsystem :kensin
   :version "0"
   :depends-on (:util :iterate :cl-fad :cl-irregsexp :bordeaux-threads :cl-test-more :cl-who :optima
-		     :cl-match :cl-store)
+		     :cl-store)
   :components
   ((:file "package")
    (:module :ksetting
@@ -15,16 +15,13 @@
    			 (:file "zenken" :depends-on ("package"))))
    (:file "kensinb"	:depends-on ("package"))
    (:file "rengokai167"	:depends-on ("package"))
-   ;; (:file "rengokai165"	:depends-on ("package"))
+   (:file "r165"	:depends-on ("package"))
    (:file "rengokai331"	:depends-on ("package"))
    (:file "shibu"	:depends-on ("package"))
    (:module :uplog
    	    :components ((:file "package")
    			 (:file "uplog"  :depends-on ("package"))))
 
-   ;; (:module :hsido
-   ;; 	    :components ((:file "package")
-   ;; 			 (:file "hsido" :depends-on ("package"))))
    (:module :csv
    	    :components ((:file "package")
    			 (:file "code"    :depends-on ("package"))
@@ -52,6 +49,10 @@
    			 (:file "kxml" :depends-on ("package"))
    			 (:file "kxml-print"
    				:depends-on ("package" "kxml"))))
+   (:module :hsido
+   	    :components ((:file "package")
+			 (:file "hsido.struct")
+   			 (:file "hsido" :depends-on ("package" "hsido.struct"))))
    (:module :dock
    	    :components ((:file "package")
    			 (:file "dock"  :depends-on ("package"))
@@ -60,23 +61,27 @@
    (:module :receive
    	    :components ((:file "package")
    			 (:file "receive" :depends-on ("package"))))
+   (:file "r172.struct" :depends-on ("package"))
+   (:file "r172"	:depends-on ("r172.struct"))
    (:module :kserv
    	    :components ((:file "package")
    			 (:file "kserv" :depends-on ("package"))))
    (:module :hsidoxml
    	    :components ((:file "package")
-   			 (:file "code")
-   			 (:file "hsidoxml" :depends-on ("package" "code"))))
-   (:module :xls-value-check
-   	    :components ((:file "package")
-   			 (:file "xvc" :depends-on ("package"))))
+   			 (:file "code" :depends-on ("package"))
+   			 (:file "hsidoxml" :depends-on ("package" "code"))
+			 (:file "hsido-feature" :depends-on ("package" "code"))))
+   ;; (:module :xls-value-check
+   ;; 	    :components ((:file "package")
+   ;; 			 (:file "xvc" :depends-on ("package"))))
    (:module :upload
 	    :components ((:file "package")
    			 (:file "upload" :depends-on ("package"))))
-   (:file "rengokai172"	:depends-on ("package" "rengokai167"))
-   (:module :meibo
-	    :components ((:file "meibo")))
+   ;; (:file "rengokai172"	:depends-on ("package" "rengokai167"))
+   ;; (:module :meibo
+   ;; 	    :components ((:file "meibo")))
    (:module :xls-checker
-	    :components ((:file "package")
-			 (:file "xls-checker" :depends-on ("package"))
-			 (:file "xls-checker-test" :depends-on ("package"))))))
+   	    :components ((:file "package")
+   			 (:file "xls-checker" :depends-on ("package"))
+   			 (:file "xls-checker-test" :depends-on ("package"))))
+   (:file "rece")))

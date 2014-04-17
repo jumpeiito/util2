@@ -1,3 +1,4 @@
+;; -*- coding:utf-8 -*-
 (in-package :kzg)
 
 (defvar topdir #P"d:/zip/ke26312901/")

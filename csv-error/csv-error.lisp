@@ -99,7 +99,7 @@
 		   :error-id	id
 		   :error-message mes
 		   :lineno	(pathname->lineno path)
-		   :upload?	(kensin::172-uploaded? num 172hash)
+		   :upload?	(r172c::172-uploaded? num 172hash)
 		   :shibu	(shibu k)))))
 
 (defun create-xml-by-string (entry name 172hash)
@@ -138,7 +138,8 @@
 		  (apply #'+ kcsv::eerr)
 		  (apply #'+ kcsv::rerr)
 		  (kcsv::cell-contents (last1 kcsv::contents))
-		  (kensin::172-uploaded? kcsv::number hash)))))
+		  ;; (kensin::172-uploaded? kcsv::number hash)
+		  (r172c::172-uploaded? kcsv::number hash)))))
 
 (defmethod csverror ((c KCSV::CSV) op 172hash)
   (optima:match c
@@ -235,7 +236,8 @@
     :code :SJIS))
 
 (defun error-file (zipfile &key (output-file nil))
-  (let ((hash (kensin::172-hash)))
+  ;; (let ((hash (kensin::172-hash)))
+  (let ((hash (r172c::172-hash)))
     (if (has-error-file? zipfile)
 	(aif (error-file-collect zipfile hash)
 	     (error-csvfile-writer

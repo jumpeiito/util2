@@ -5,9 +5,6 @@
       (cl-fad:file-exists-p #P"f:/FKCA172.csv")
       (cl-fad:file-exists-p #P"y:/47伊東/FKCA172.csv")))
 
-(defun int (string)
-  (read-from-string string))
-
 (defstruct (172data
 	     (:constructor 172-gen (保険者番号 被保険者証記号 被保険者証番号 個人番号 データ管理番号１ 性別 生年月日 被保険者名カナ 被保険者名漢字 資格フラグ 除外フラグ 受診券整理番号 保健指導レベル 服薬再確認 健診メッセージID 健診メッセージ 利用券整理番号 初回面接実施日 途中終了 指導未完了 指導メッセージID 指導メッセージ))
 	     ;; (:constructor )
@@ -30,9 +27,18 @@
       obj)))
 
 (defun 172-mother ()
+  (warn "172-mother is obsoleted. Use R172-CORE::DATA.")
   (mapcar
    #'create-172data
-   (nthcdr 2 (csv-read-to-list (172-newest) :code :SJIS))))
+   (butlast (nthcdr 2 (csv-read-to-list (172-newest) :code :SJIS)))))
+
+  ;; 0.218 seconds of real time
+  ;; 0.202801 seconds of total run time (0.171601 user, 0.031200 system)
+  ;; [ Run times consist of 0.032 seconds GC time, and 0.171 seconds non-GC time. ]
+  ;; 93.12% CPU
+  ;; 665,422,157 processor cycles
+  ;; 19,244,104 bytes consed
+
 
 (defun 172-create-mother (filename)
   (mapcar
@@ -51,10 +57,33 @@
     :code :SJIS))
 
 (defun 172-hash ()
-  (push-hash-table
-   #'172data-受診券整理番号
-   #'identity
-   (172-mother)))
+  (declare (optimize speed))
+  (let1 hash (make-hash-table :test #'equal)
+    (util::csv-read-iter
+     (172-newest)
+     (lambda (line)
+       (optima:match line
+	 ((LIST* _ "FKCA172" _)  :ignore) ; 1行目
+	 ((LIST* "保険者番号" _) :ignore) ; 2行目
+	 ((LIST _)               :ignore) ; 最終行
+	 (_
+	  (let1 obj (create-172data line)
+	    (setf (gethash (172data-受診券整理番号 obj) hash)
+		  obj)))))
+     :code :SJIS)
+    hash))
+
+(defun 172-iterate (func &key (file (172-newest)))
+  (util::csv-read-iter
+   file
+   (lambda (line)
+     (optima:match line
+       ((LIST* _ "FKCA172" _)  :ignore)
+       ((LIST* "保険者番号" _) :ignore)
+       ((LIST  _)              :ignore)
+       (_
+	(funcall func (create-172data line)))))
+   :code :SJIS))
 
 (defun 172-make-hash (filename)
   (push-hash-table
@@ -98,58 +127,58 @@
 		 (string-null (172data-指導メッセージ instance)))
 	    (chash instance :key #'172data-支部))))
 
-(defun 172-hsido-classify ()
-  (iter (for person :in (172-mother))
-	(phash person
-	       :condition t
-	       :key #'172data-保健指導レベル)))
+;; (defun 172-hsido-classify ()
+;;   (iter (for person :in (172-mother))
+;; 	(phash person
+;; 	       :condition t
+;; 	       :key #'172data-保健指導レベル)))
 
-(defun 172-hsido-total-user (list)
-  (iter (for person :in list)
-	(if (and (string-not-null (172data-指導未完了 person))
-		 (not (equal "MKCA01746E" (172data-指導メッセージID person))))
-	    (collect person))))
+;; (defun 172-hsido-total-user (list)
+;;   (iter (for person :in list)
+;; 	(if (and (string-not-null (172data-指導未完了 person))
+;; 		 (not (equal "MKCA01746E" (172data-指導メッセージID person))))
+;; 	    (collect person))))
 
-(defun 172-hsido-total-finisher (list)
-  (iter (for person :in list)
-	(if (and (equal "0" (172data-指導未完了 person))
-		 (not (equal "MKCA01746E" (172data-指導メッセージID person))))
-	    (collect person))))
+;; (defun 172-hsido-total-finisher (list)
+;;   (iter (for person :in list)
+;; 	(if (and (equal "0" (172data-指導未完了 person))
+;; 		 (not (equal "MKCA01746E" (172data-指導メッセージID person))))
+;; 	    (collect person))))
 
-(defun percent (num divisor &key (power 1))
-  (float (/ (round (* (expt 10 power) (* 100 (float (/ num divisor)))))
-	    (expt 10 power))))
+;; (defun percent (num divisor &key (power 1))
+;;   (float (/ (round (* (expt 10 power) (* 100 (float (/ num divisor)))))
+;; 	    (expt 10 power))))
 
 ;; (* 100 (float (/ 23 839)))
 
-(defun 172-hsido-total-output-csv (plist)
-  (let* ((l1	(getf plist :level1))
-	 (l1u	(getf plist :level1-user))
-	 (l1f	(getf plist :level1-finisher))
-	 (l2	(getf plist :level2))
-	 (l2u	(getf plist :level2-user))
-	 (l2f	(getf plist :level2-finisher)))
-    (format nil "~{~A~^,~}"
-	    (list l2 l2u (percent l2u l2) l2f (percent l2f l2)
-		  l1 l1u (percent l1u l1) l1f (percent l1f l1)
-		  (+ l2 l1) (+ l1u l2u) (percent (+ l2u l1u) (+ l2 l1))
-		  (+ l1f l2f) (percent (+ l2f l1f) (+ l2 l1))))))
+;; (defun 172-hsido-total-output-csv (plist)
+;;   (let* ((l1	(getf plist :level1))
+;; 	 (l1u	(getf plist :level1-user))
+;; 	 (l1f	(getf plist :level1-finisher))
+;; 	 (l2	(getf plist :level2))
+;; 	 (l2u	(getf plist :level2-user))
+;; 	 (l2f	(getf plist :level2-finisher)))
+;;     (format nil "~{~A~^,~}"
+;; 	    (list l2 l2u (percent l2u l2) l2f (percent l2f l2)
+;; 		  l1 l1u (percent l1u l1) l1f (percent l1f l1)
+;; 		  (+ l2 l1) (+ l1u l2u) (percent (+ l2u l1u) (+ l2 l1))
+;; 		  (+ l1f l2f) (percent (+ l2f l1f) (+ l2 l1))))))
 
-(defun 172-hsido-total (&optional (output-type :identity))
-  "output-type  :identity :csv :xml :yaml"
-  (let* ((mainhash (172-hsido-classify))
-	 (level1   (gethash "1" mainhash))
-	 (level2   (gethash "2" mainhash)))
-    (funcall
-     (case output-type
-       (:identity	#'identity)
-       (:csv		#'172-hsido-total-output-csv))
-     (list :level1          (length level1)
-	   :level1-user     (length (172-hsido-total-user level1))
-	   :level1-finisher (length (172-hsido-total-finisher level1))
-	   :level2          (length level2)
-	   :level2-user     (length (172-hsido-total-user level2))
-	   :level2-finisher (length (172-hsido-total-finisher level2))))))
+;; (defun 172-hsido-total (&optional (output-type :identity))
+;;   "output-type  :identity :csv :xml :yaml"
+;;   (let* ((mainhash (172-hsido-classify))
+;; 	 (level1   (gethash "1" mainhash))
+;; 	 (level2   (gethash "2" mainhash)))
+;;     (funcall
+;;      (case output-type
+;;        (:identity	#'identity)
+;;        (:csv		#'172-hsido-total-output-csv))
+;;      (list :level1          (length level1)
+;; 	   :level1-user     (length (172-hsido-total-user level1))
+;; 	   :level1-finisher (length (172-hsido-total-finisher level1))
+;; 	   :level2          (length level2)
+;; 	   :level2-user     (length (172-hsido-total-user level2))
+;; 	   :level2-finisher (length (172-hsido-total-finisher level2))))))
 
 (defun 172-uploaded? (jnumber hash)
   (optima:match (gethash jnumber hash nil)
@@ -207,14 +236,14 @@
 	;; エントリポイント
 	(for line :in csvdata)
 	(for obj = (kensin::create-172data line))
-	(with-slots (kensin::指導メッセージ
+	(with-slots (kensin::指導メッセージ kensin::健診メッセージ
 		     kensin::資格フラグ kensin::支部 kensin::性別
 		     kensin::生年月日 kensin::受診券整理番号 kensin::保健指導レベル)
 	    obj
-	  (optima:match (list kensin::指導メッセージ kensin::資格フラグ)
-	    ((LIST mes _)
+	  (optima:match (list kensin::指導メッセージ kensin::健診メッセージ kensin::資格フラグ)
+	    ((LIST hmes kmes _)
 	     ;; 指導メッセージが入っているものを除外
-	     (if (string-not-null mes)
+	     (if (or (string-not-null hmes) (string-not-null kmes))
 		 (progn
 		   (collect obj :into sido)
 		   (next-iteration))
@@ -227,18 +256,23 @@
 	    ((LIST _ "2")
 	     (collect obj :into kensin2)
 	     (next-iteration)))
-	  (let ((shibu (kensin::int kensin::支部))
-		(sex (kensin::int kensin::性別))
-		(hk (if (ppcre:scan "1$" kensin::受診券整理番号) 1 2))
-		(year  (jnum-how-old kensin::生年月日 kensin::受診券整理番号)))
-	    ;; 男女別
-	    (aref-1+   sex-year-array shibu sex year)
-	    ;; 本人・家族別
-	    (aref-1+   hkarray shibu hk year)
-	    ;; 保健指導レベル別
-	    (aref-cons sidoary (list kensin::受診券整理番号 year)
-		       shibu (kensin::int kensin::保健指導レベル))
-	    (push-hash kensin::支部 kensin::保健指導レベル hlv)))
+	  (flet ((int (str) (read-from-string str)))
+	    (let ((shibu (int kensin::支部))
+		  (sex (int kensin::性別))
+		  (hk (if (ppcre:scan "1$" kensin::受診券整理番号) 1 2))
+		  (year  (jnum-how-old kensin::生年月日 kensin::受診券整理番号)))
+	      (assert (and (typep shibu 'number)
+			   (typep sex 'number)
+			   (typep hk 'number)
+			   (typep year 'number)))
+	      ;; 男女別
+	      (aref-1+   sex-year-array shibu sex year)
+	      ;; 本人・家族別
+	      (aref-1+   hkarray shibu hk year)
+	      ;; 保健指導レベル別
+	      (aref-cons sidoary (list kensin::受診券整理番号 year)
+			 shibu (int kensin::保健指導レベル))
+	      (push-hash kensin::支部 kensin::保健指導レベル hlv))))
 	(finally (return (values sido kensin1 kensin2 sex-year-array hkarray hlv sidoary)))))
 
 (defun get-by-sex (array shibu sex year &key (step 5))
@@ -260,14 +294,15 @@
 			 (finally (return pot))))))
 
 (defun init-list (ary step)
-  (iter (for (code . name) :in-shibu :long)
-	(for c = (kensin::int code))
-	(for init = (init ary c step))
-  	(collect (append (list code name)
-  			 init
-  			 (mapcar (lambda (f) (apply #'+ (mapcar f (group init 2))))
-  				 (list #'first #'second))
-  			 (list (apply #'+ init))))))
+  (flet ((int (s) (read-from-string s)))
+    (iter (for (code . name) :in-shibu :long)
+	  (for c = (int code))
+	  (for init = (init ary c step))
+	  (collect (append (list code name)
+			   init
+			   (mapcar (lambda (f) (apply #'+ (mapcar f (group init 2))))
+				   (list #'first #'second))
+			   (list (apply #'+ init)))))))
 
 (defun percent-or-nil (num div)
   (if (eq div 0)
@@ -330,17 +365,18 @@
 				(jnum-how-old birth number))))))))
 
 (defun sc-read (hash)
-  (iter (for line :in (csv-read-to-list ksetting::*sc-output-file*))
-	(optima:match line
-	  ((list* num y _ _ _ _ shibu _)
-	   (when (eq ksetting::*year* (+ 2000 (kensin::int y)))
-	     (let1 obj (gethash num hash)
-	       (if (aif obj (zenken::target? it) nil)
-		   (collect
-		       (vector (kensin::int (gethash shibu short-vice-shibu-hash))
-			       (sex (zenken::zenken-性別 obj))
-			       (hk num)
-			       (kensin::int (zenken::zenken-年度末年齢 obj)))))))))))
+  (flet ((int (s) (read-from-string s)))
+    (iter (for line :in (csv-read-to-list ksetting::*sc-output-file*))
+	  (optima:match line
+	    ((list* num y _ _ _ _ shibu _)
+	     (when (eq ksetting::*year* (+ 2000 (int y)))
+	       (let1 obj (gethash num hash)
+		 (if (aif obj (zenken::target? it) nil)
+		     (collect
+			 (vector (int (gethash shibu short-vice-shibu-hash))
+				 (sex (zenken::zenken-性別 obj))
+				 (hk num)
+				 (int (zenken::zenken-年度末年齢 obj))))))))))))
 
 (defun sex-array (list)
   (iter (with ary = (make-array '(96 3 76)))
@@ -405,7 +441,8 @@
   (:nicknames #:r1722)
   (:use :cl :util :kensin :iterate :cl-win32ole :excel :r172t)
   (:import-from #:alexandria
-		#:hash-table-values))
+		#:hash-table-values)
+  (:import-from #:optima #:match))
 
 (in-package #:r1722); ----------------------------------------
 (declaim (inline add))
@@ -445,7 +482,9 @@
 	(for line :in (csv-read-to-list ksetting::*dock-output-file*))
 	(optima:match line
 	  ((list* _ _ _ _ _ number "1" _)
-	   (setf (gethash number hash) 1)))
+	   (setf (gethash number hash) 1))
+	  (_
+	   (next-iteration)))
 	(finally (return hash))))
 
 (defun sc-read ()
@@ -453,7 +492,9 @@
 	(for line :in (csv-read-to-list ksetting::*sc-output-file*))
 	(optima:match line
 	  ((list* num _)
-	   (setf (gethash num hash) 1)))
+	   (setf (gethash num hash) 1))
+	  (_
+	   (error "r1722::sc-read-error")))
 	(finally (return hash))))
 
 (defun unit-last (unit)
@@ -464,7 +505,9 @@
 	 (mapcar (lambda (v) (svref v len))
 		 (list total h k m f))))
       ((TYPE FIXNUM)
-       (list total h k m f)))))
+       (list total h k m f))
+      (_
+       (error "r1722::unit-last-error")))))
 
 (defun %list-expand (list)
   (optima:match list
@@ -496,6 +539,14 @@
 	  (for _k = (- _t _d _s))
 	  (collect (list _k _d _s _t)))))
 
+(defmacro unit++ (sym)
+  (let ((fn (intern (format nil "UNIT-~A" sym))))
+    `(setf (,fn dock) (1+ (,fn dock)))))
+
+(defmacro units++ (sym)
+  (let ((fn (intern (format nil "UNIT-~A" sym))))
+    `(setf (,fn sc) (1+ (,fn sc)))))
+
 (def-clojure shibu (code name)
   ((code	code)
    (name	name)
@@ -509,21 +560,13 @@
 	  (add hsido  hk sex hlv)
 	  (add metabo hk sex mlv))
   (:dock! (hk sex)
-	  (if (eq hk 1)
-	      (setf (unit-h dock) (1+ (unit-h dock)))
-	      (setf (unit-k dock) (1+ (unit-k dock))))
-	  (if (eq sex 1)
-	      (setf (unit-m dock) (1+ (unit-m dock)))
-	      (setf (unit-f dock) (1+ (unit-f dock))))
-	  (setf (unit-total dock) (1+ (unit-total dock))))
+	  (match hk  (1 (unit++ H)) (2 (unit++ K)))
+	  (match sex (1 (unit++ M)) (2 (unit++ F)))
+	  (unit++ TOTAL))
   (:sc!   (hk sex)
-	  (if (eq hk 1)
-	      (setf (unit-h sc) (1+ (unit-h sc)))
-	      (setf (unit-k sc) (1+ (unit-k sc))))
-	  (if (eq sex 1)
-	      (setf (unit-m sc) (1+ (unit-m sc)))
-	      (setf (unit-f sc) (1+ (unit-f sc))))
-	  (setf (unit-total sc) (1+ (unit-total sc))))
+	  (match hk  (1 (units++ H)) (2 (units++ K)))
+	  (match sex (1 (units++ M)) (2 (units++ F)))
+	  (units++ TOTAL))
   (:spec  ()
 	  (make-spec hsido dock sc))
   (:spec2 ()
@@ -542,32 +585,27 @@
 	(with dock-hash  = (dock-read))
 	(with sc-hash    = (sc-read))
 	(for line :in 172data)
-	(with-slots (kensin::支部
-		     kensin::性別
-		     kensin::受診券整理番号
-		     kensin::保健指導レベル) line
-	  (for jnum  = kensin::受診券整理番号)
-	  (for shibu = (read-from-string kensin::支部))
-	  (for hlv   = (read-from-string kensin::保健指導レベル))
-	  (for sex   = (read-from-string kensin::性別))
-	  (for hk    = (hk jnum))
-	  (for r167  = (gethash jnum 167hash))
-	  ;; (assert (typep r167 'kensin::r167))
-	  (unless (typep r167 'kensin::r167)
-	    (print jnum))
-	  (for %m    = (kensin::r167-実施月 r167))
-	  (for month = (if (> %m 3) (- %m 3) (+ %m 9)))
-	  (for mlv   = (car (kensin::r167-メタボレベル r167)))
-	  (for %S%   = (gethash shibu shibu-hash))
-	  (funcall %S% :add hk sex month hlv mlv)
-	  (cond
-	    ((gethash jnum dock-hash)
-	     (funcall %S% :dock! hk sex))
-	    ((gethash jnum sc-hash)
-	     (funcall %S% :sc! hk sex))
-	    (t
-	     (next-iteration))))
-	(finally (return shibu-hash))))
+	(for jnum  = (kensin::172data-受診券整理番号 line))
+	(for shibu = (read-from-string (kensin::172data-支部 line)))
+	(for hlv   = (read-from-string (kensin::172data-保健指導レベル line)))
+	(for sex   = (read-from-string (kensin::172data-性別 line)))
+	(for hk    = (hk jnum))
+	(for r167  = (gethash jnum 167hash))
+	(assert (typep r167 'kensin::r167))
+	(for %m    = (kensin::r167-実施月 r167))
+	(for month = (if (> %m 3) (- %m 3) (+ %m 9)))
+	(for mlv   = (car (kensin::r167-メタボレベル r167)))
+	(for %S%   = (gethash shibu shibu-hash))
+	(funcall %S% :add hk sex month hlv mlv)
+	(cond
+	  ((gethash jnum dock-hash)
+	   (funcall %S% :dock! hk sex))
+	  ((gethash jnum sc-hash)
+	   (funcall %S% :sc! hk sex))
+	  (t
+	   (next-iteration)))
+	(finally (return shibu-hash))
+	))
 
 (defun figure-unit (unit)
   (with-slots (h k m f total) unit
@@ -583,7 +621,9 @@
 			    lv2 (percent-or-nil lv2 total)
 			    lv3 (percent-or-nil lv3 total)
 			    ot (percent-or-nil ot total)
-			    total)))))))
+			    total)))
+	    (_
+	     (error "r1722::figure5-unit-error"))))))
 
 (defun %type (hash sym)
   (mapcar (lambda (f) (funcall f sym))
@@ -668,9 +708,6 @@
 
 (defun make-merge-cells (symbol)
   (append (generate-merge-cells 5)
-	  ;; (if (eq symbol :167m)
-	  ;;     nil
-	  ;;     (list "D1:E1" "F1:G1" "H1:I1" "J1:K1"))
 	  (cond
 	    ((eq symbol :167m) nil)
 	    ((eq symbol :spec) (list "D1:E1" "F1:G1" "H1:I1"))
@@ -713,18 +750,18 @@
 
 (defstruct (specsex
 	     (:constructor specsex (dockm dockf scm scf totalm totalf)))
-  shibuf shibum dockf dockm scf scm totalf totalm shibu dock sc total
+  shibuf shibum dockf dockm scf scm totalf totalm %shibu dock sc total
   shibuf% shibum% dockf% dockm% scf% scm% totalf% totalm%)
 
 (defun %create (line)
   (let1 obj (apply #'specsex line)
-    (with-slots (shibuf totalf scf dockf shibum totalm scm dockm total dock sc shibu
+    (with-slots (shibuf totalf scf dockf shibum totalm scm dockm total dock sc %shibu
 			shibuf% shibum% dockf% dockm% scf% scm% totalf% totalm%)
 	obj
       (setq shibuf  (- totalf scf dockf)
 	    shibum  (- totalm scm dockm)
 	    total   (+ totalf totalm)
-	    shibu   (+ shibuf shibum)
+	    %shibu  (+ shibuf shibum)
 	    dock    (+ dockf dockm)
 	    sc      (+ scf scm)
 	    shibuf% (percent-or-nil shibuf total)
@@ -792,8 +829,99 @@
 
 (defmethod initialize-instance :after ((m SHEET) &rest args)
   (declare (ignorable args))
-  (with-slots (data borders-area c-align-area merge-cells lastrow) m
+  (with-slots (data borders-area c-align-area merge-cells lastrow enfont) m
     (setq lastrow		(1+ (length data))
+	  borders-area	(format nil "A1:AC~A" lastrow)
+	  c-align-area	(list
+			 (format nil "A1:B~A" lastrow)
+			 "A1:AC1")
+	  merge-cells	(iter (for h :from 2 :to (- lastrow 4) :by 5)
+			      (appending (list (format nil "A~A:A~A" h (+ h 4))
+					       (format nil "B~A:B~A" h (+ h 4)))))
+	  enfont	(format nil "C1:AC~A" lastrow))))
+
+(defpackage #:r172-core
+  (:nicknames :172core)
+  (:use :cl :util :kensin :iterate :cl-win32ole :excel))
+
+(in-package #:172core)
+
+(defclass SHEET ()
+  ((book         :initarg :book)
+   (sheet        :initarg :sheet :accessor sheet-of)
+   (name         :initarg :name)
+   (borders-area :initarg :borders-area)
+   (width        :initarg :width)
+   (jpfont       :initarg :jpfont)
+   (enfont       :initarg :enfont)
+   (c-align-area :initarg :c-align-area)
+   (title        :initarg :title)
+   (endcol       :initarg :endcol)
+   (end          :initarg :end :reader end-of)
+   (shibu-step   :initarg :shibu-step)
+   (shibu-row    :initarg :shibu-row)
+   (shibu-col	 :initarg :shibu-col)))
+
+(defclass SPEC-SHEET (SHEET)
+  ((borders-area :reader  borders->)
+   (mainhash	 :initarg :mainhash)
+   (symbol	 :initarg :symbol)
+   (data	 :initarg :data)
+   (shibu-data)
+   (merge-cells)))
+
+(defclass TYPE2-SHEET (SHEET)
+  ((borders-area :reader  borders->)
+   (mainhash	 :initarg :mainhash)
+   (symbol	 :initarg :symbol)
+   (data	 :initarg :data)
+   (shibu-data)
+   (merge-cells)))
+
+(defclass ZENKEN-SHEET (SHEET)
+  ((title
+    :initform '(("支部名" "分会名" "-20歳" "20歳台" "30歳台" "40歳台" "50歳台" "60歳台" "70歳台" "合計"
+		 "-20歳" "20歳台" "30歳台" "40歳台" "50歳台" "60歳台" "70歳台" "合計")))
+   (borders-area)
+   (c-align-area)
+   (merge-cells)
+   (enfont)
+   (lastrow)
+   (data	 :initarg :data)))
+
+(defmethod initialize-instance
+    :after ((m SHEET) &rest args)
+  (declare (ignorable args))
+  (with-slots (book name step) m
+    (let1 sh (ole book :worksheets :add)
+      (excel::sheet-name sh name)
+      (setf (sheet-of m) sh))))
+
+(defmethod initialize-instance
+    :after ((m SPEC-SHEET) &rest args)
+  (declare (ignorable args))
+  (with-slots (dock sc array data title endcol end) m
+    (setq data		(r172sp:data dock sc array)
+	  endcol	(length (car title))
+	  end		(excel::number-to-col endcol))))
+
+(defmethod initialize-instance
+    :after ((s TYPE2-SHEET) &rest args)
+  (declare (ignorable args))
+  (with-slots (sheet book data symbol mainhash title borders-area
+		     name c-align-area enfont merge-cells shibu-data) s
+    (setq sheet		(ole book :worksheets :item name)
+	  borders-area	(make-borders-area title)
+	  c-align-area	(make-c-align title)
+	  enfont	(make-enfont title)
+	  merge-cells	(make-merge-cells symbol)
+	  shibu-data	(make-shibu-data))))
+
+(defmethod initialize-instance
+    :after ((m ZENKEN-SHEET) &rest args)
+  (declare (ignorable args))
+  (with-slots (data borders-area c-align-area merge-cells lastrow enfont) m
+    (setq lastrow	(1+ (length data))
 	  borders-area	(format nil "A1:Z~A" lastrow)
 	  c-align-area	(list
 			 (format nil "A1:B~A" lastrow)
@@ -1065,7 +1193,7 @@
     (putData obj)
     (putBorder obj)
     (putCenterAlign obj)
-    ;; (putEnFont obj)
+    (putEnFont obj)
     (execMerge obj)
     (execWidth obj)))
 
@@ -1086,14 +1214,17 @@
        ,@body)))
 
 (defun %file->csv (file)
-  (nthcdr 2
-	  (csv-read-to-list (or file
-				(172-newest))
-			    :code :SJIS)))
+  (butlast
+   (nthcdr 2
+	   (csv-read-to-list (or file
+				 (172-newest))
+			     :code :SJIS))))
 
 (defun %csvfile (csv)
   (iter (for line :in csv)
-	(for obj = (create-172data line))
+	(handler-case (for obj = (create-172data line))
+	  (sb-int:simple-program-error (e)
+	    (declare (ignorable e)) (next-iteration)))
 	(if (172-target? obj)
 	    (collect obj))))
 
@@ -1161,8 +1292,8 @@
     (with-172-xls (book 172file 167file)
       (let* ((sh      (ole book :worksheets :item 1))
     	     (lr      (lastrow sh :y 1 :x 1)))
-    	(set-column-width sh (:a :v) width1)
-    	(border sh (:a 2) (:v (1- (the fixnum lr))))
+    	;; (set-column-width sh (:a :v) width1)
+    	;; (border sh (:a 2) (:v (1- (the fixnum lr))))
     	(prog1
     	    (multiple-value-bind (s k1 k2 syhash hkarray hlvhash hlvary)
     		(sb-thread::join-thread class)
@@ -1172,7 +1303,8 @@
     	      (r172i::type2 book
 	      		    (get-thread-value csv)
 	      		    (get-thread-value 167hash))
-	      (r172i::zenken-sheet book))
+	      ;; (r172i::zenken-sheet book)
+	      )
     	  (excel::save-book book _172file_ :xlsx))))))
 
 ;; (defun %%172-xls-main (&key 172file 167file)
@@ -1197,7 +1329,7 @@
 ;;     	      (r172i::type2 book csv 167hash))
 ;;     	  (excel::save-book book _172file_ :xlsx))))))
 
-(defparameter 172csv (%csvfile (%file->csv ksetting::*fkca172*)))
-(defparameter 167hash (r167-hash ksetting::*fkac167*))
+;; (defparameter 172csv (%csvfile (%file->csv ksetting::*fkca172*)))
+;; (defparameter 167hash (r167-hash ksetting::*fkac167*))
 
 (in-package :cl-user)

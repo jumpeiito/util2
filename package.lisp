@@ -57,4 +57,11 @@
 	   #:jnum-how-old
 	   #:sex
 	   #:jnum->sex
-	   #:hk))
+	   #:hk
+	   #:r165-iterate
+	   #:r165-hash))
+
+(defpackage #:R172-core
+  (:nicknames #:R172c)
+  (:use :cl :util :kensin :iterate)
+  )

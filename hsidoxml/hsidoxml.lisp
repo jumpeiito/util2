@@ -6,28 +6,29 @@
 (defgeneric common-section		(x))
 (defgeneric supported-level		(x))
 (defgeneric changing-stage		(x))
-(defgeneric course-name			(x))
+(defgeneric course-name		(x))
 (defgeneric first-time-performer	(x))
 (defgeneric first-time-date		(x))
-(defgeneric first-time-style		(x))
-(defgeneric first-time-width		(x))
+(defgeneric first-time-style	(x))
+(defgeneric first-time-width	(x))
 (defgeneric target			(x))
-(defgeneric target-base			(x))
+(defgeneric target-base		(x))
 (defgeneric final			(x))
-(defgeneric final-base			(x))
-(defgeneric first-time-style		(x))
+(defgeneric final-base		(x))
+(defgeneric first-time-style	(x))
 (defgeneric support-base		(x))
 (defgeneric support			(x))
-(defgeneric internal-performer		(x))
+(defgeneric internal-performer	(x))
 (defgeneric internal-date		(x))
 (defgeneric internal-style		(x))
 (defgeneric internal-width		(x))
 (defgeneric internal-base		(x))
 (defgeneric internal			(x))
+(defgeneric final-assess		(x))
 (defgeneric xml-stored-p		(x))
 (defgeneric index-string		(x op))
-(defgeneric xls-string			(x op))
-;; (defgeneric first-time-style		(x))
+(defgeneric xls-string		(x op))
+;; (defgeneric first-time-style	(x))
 ;; (defgeneric first-time-style		(x))
 ;; (defgeneric supported-level		(x))
 
@@ -182,6 +183,9 @@
 (defmethod internal ((x XML-PARSER))
   (base-to-clojure-list (internal-base x)))
 
+;; "2610903946_00263129_201310070_2"
+(defmethod final-assess ((x XML-PARSER)))
+
 (defvar xml-directory #P"f:/zip/MAIN/HSIDO/xml/")
 
 (defmethod xml-stored-p ((x XML-PARSER))
@@ -195,13 +199,32 @@
 		     (merge-pathnames xml-directory
 				      (kxml::path-basename x)))))
 
+(defun occurd->nendo (parser)
+  (& nendo-year strdt kxml::occur-day parser))
+
+(defun jnumber->nendo (parser)
+  (handler-case
+      (+ 2000
+	 (read-from-string
+	  (string-take
+	   (format nil "~11,'0d"
+		   (read-from-string (kxml::jnumber parser)))
+	   2)))
+    ;; 受診券番号が入っていない場合
+    (sb-kernel::bounding-indices-bad-error (e)
+      (declare (ignorable e)) nil)
+    ;; 受診券番号が入っていない場合
+    (end-of-file (e)
+      (declare (ignorable e)) nil)))
+
 (defun make-xml-list ()
   (iter (for file :in-allf xml-directory :type "xml")
 	(for instance = (make-instance 'kxml::XML-PARSER
 				       :entry nil
 				       :pathname file))
 	(phash instance :condition t
-	       :key (lambda (o) (nendo-year (strdt (kxml::occur-day o)))))))
+	       :key (lambda (o) (or (jnumber->nendo o)
+				    (occurd->nendo o))))))
 
 (defmethod index-string ((x XML-PARSER) op)
   (declare (ignorable op))
@@ -226,7 +249,7 @@
 	      (:script :language "JavaScript1.2" :src "tablesort.js")
 	      (loop
 		 for (year . data) in (sort (hash-table-alist (make-xml-list))
-					    (lambda (x y) (< (car x) (car y))))
+					    (lambda (x y) (> (car x) (car y))))
 		 do (cl-who:htm (:h3 (cl-who:str year))
 				(:table :border "1" :cellspacing "0"
 					(:thead
@@ -239,7 +262,8 @@
 					  (:th :class "case" :width "120" (cl-who:str "医療機関CD"))
 					  (:th :width "120" (cl-who:str "医療機関"))))
 					(loop
-					   for xp in data
+					   for xp in (sort (copy-list data)
+							   (lambda (x y) (string< (kxml::name x) (kxml::name y))))
 					   do (cl-who:htm
 					       (:tr :bgcolor (if (final xp) "greenyellow" "white")
 						    (:td (:a :href (format nil "file:///~A" (kxml::path-of xp))
@@ -256,9 +280,15 @@
   (call-with-output-file2
       (merge-pathnames xml-directory "index.html")
     #'make-xml-index-html))
-;; (for-each
-;;  (lambda (z) (kxml::map-with-kxml #'xml-store z))
-;;  (allf #P"f:/zip/MAIN/HSIDO/" :type "zip"))
+
+(defun make-all-xml ()
+  (for-each
+   (lambda (z) (kxml::map-with-kxml #'xml-store z))
+   (allf #P"f:/zip/MAIN/HSIDO/" :type "zip")))
+
+;; (mapcar
+;;  #'final
+;;  (directory-list #P"f:/zip/MAIN/HSIDO/" :type "zip"))
 
 ;; (defparameter x
 ;;   (find-if

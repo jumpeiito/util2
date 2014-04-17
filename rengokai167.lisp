@@ -133,4 +133,109 @@
 	;; (print (list shibu total (apply #'+ total)))
 	(collect (list shibu total (apply #'+ total)))))
 
+(defun 167data (file)
+  (util::csv-read-map-filter
+   file
+   #'identity
+   (lambda (line)
+     (optima:match line
+       ((LIST* _ "FKAC167" _) nil)
+       ((LIST* "保険者番号" _) nil)
+       ((LIST _) nil)
+       (_ line)))
+   :code :SJIS))
+
+(defun 167file-id-hash (filename)
+  (iter (with hash = (make-hash-table :test #'equal))
+	(for id :in (second (csv-read-to-list filename :code :SJIS :to 2)))
+	(for i :upfrom 0)
+	(setf (gethash id hash) i)
+	(finally (return hash))))
+
+(defun year-sex-classify (body header-hash)
+  (let ((birthday (gethash "生年月日" header-hash))
+	(jnumber (gethash "受診券整理番号" header-hash))
+	(sex (gethash "性別" header-hash)))
+    (iter (with hash = (make-hash-table :test #'equal))
+	  (for line :in body)
+	  (for _birth = (nth birthday line))
+	  (for _jnum = (nth jnumber line))
+	  (for cascade = (* 10 (truncate (/ (jnum-how-old _birth _jnum) 10))))
+	  (for _sex = (nth sex line))
+	  (for key = (cons cascade _sex))
+	  (setf (gethash key hash)
+		(cons line (gethash key hash)))
+	  (finally (return hash)))))
+
+(def-clojure 167cloj (filename)
+  ((filename	filename)
+   (body	(167data filename))
+   ;; 項目が何列目にあるか調べるため
+   (header	(167file-id-hash filename))
+   ;; 年代ごと・性別ごとに分かれている
+   (yearClass   (year-sex-classify body header)))
+  (:index
+   (id)
+   (gethash id header))
+  (:all
+   (cascade sex)
+   (length (gethash (cons cascade sex) yearclass)))
+  (:count-if
+   (cascade sex id pred)
+   (iter (with row = (funcall (util::self) :index id))
+	 (for line :in (gethash (cons cascade sex) yearclass))
+	 (handler-case (for el = (read-from-string (nth row line)))
+	   (END-OF-FILE (e)
+	     (declare (ignorable e))
+	     (next-iteration)))
+	 (if (funcall pred el)
+	     (count el))))
+
+  (:count-if2
+   (cascade sex id1 id2 pred)
+   (iter (with row1 = (funcall (util::self) :index id1))
+	 (with row2 = (funcall (util::self) :index id2))
+	 (for line :in (gethash (cons cascade sex) yearclass))
+	 (handler-case (progn
+			 (for el1 = (read-from-string (nth row1 line)))
+			 (for el2 = (read-from-string (nth row2 line))))
+	   (END-OF-FILE (e)
+	     (declare (ignorable e))
+	     (next-iteration)))
+	 (if (funcall pred el1 el2)
+	     (count el1)))))
+
+(defparameter condit
+  `(("ＢＭＩ"				. ,(lambda (el) (>= el 25)))
+    ("腹囲"				. ,(lambda (el) (>= el 90)))
+    ("収縮期血圧" "拡張期血圧" ,(lambda (high low) (or (>= high 140) (>= low 90))))
+    ("中性脂肪（トリグリセリド）"	. ,(lambda (el) (>= el 300)))
+    ("中性脂肪（トリグリセリド）"	. ,(lambda (el) (>= el 150)))
+    ("ＨＤＬコレステロール"		. ,(lambda (el) (<= el 34)))
+    ("ＬＤＬコレステロール"		. ,(lambda (el) (>= el 140)))
+    ("GOT（ＡＳＴ）" "GPT（ＡＬＴ）" ,(lambda (got gpt) (or (>= got 51) (>= gpt 51))))
+    ("γ-GT(γ-GTP)"			. ,(lambda (el) (>= el 101)))
+    ("空腹時血糖（電位差法）"		. ,(lambda (el) (>= el 126)))
+    ("ＨｂＡ１ｃ（JDS値）"		. ,(lambda (el) (>= el 6.1)))))
+
+(defun keys (sex)
+  (iter (for el :from 40 :to 70 :by 10)
+	(collect (cons el sex))))
+
+(defun makeTable (cloj sex)
+  (iter (for (casc . _sex) :in (keys sex))
+	(for all = (funcall cloj :all casc _sex))
+	(collect (iter (for el :in condit)
+		       (optima:match el
+			 ((LIST id1 id2 pred)
+			  (for amount = (funcall cloj :count-if2 casc _sex id1 id2 pred))
+			  (collect (util::percent amount all)))
+			 ((CONS id pred)
+			  (for amount1 = (funcall cloj :count-if casc _sex id pred))
+			  (collect (util::percent amount1 all))))))))
+
+;; (defun makeTable2 (cloj sex)
+;;   (iter (for el :in condit)
+;; 	(optima:match el)))
+
 (in-package :cl-user)

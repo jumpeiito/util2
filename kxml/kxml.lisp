@@ -428,6 +428,8 @@
 			     zipfile)))
     :code :SJIS))
 
+;; f:/zip/MAIN/2013/2612800710_00263129_201312280_1.zip
+
 (defun zip-info (zipfile)
   (map-with-kxml #'info zipfile))
 

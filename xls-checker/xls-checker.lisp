@@ -1,6 +1,12 @@
 (in-package #:check-code) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (declaim (inline string-drop-right))
 
+(defparameter xls-checker-verbose nil)
+
+(defun xls-checker-format (string)
+  (if xls-checker-verbose
+      (format t string)))
+
 (defun string-drop-right (string n)
   (declare (optimize speed)
 	   (type simple-string string)
@@ -27,19 +33,20 @@
 
 (defgeneric create (obj line))
 (defmethod create ((obj Code) (line LIST))
-  (cl-match:match line
-    ((LIST* c m n1 n2 ty _ f xty u _ _ _ _ _ _ _ _ _ _ ex _ _ _ mi ma _)
-     (setf (code->	obj)	c
-	   (must->	obj)	m
-	   (name1->	obj)	n1
-	   (name2->	obj)	n2
-	   (strtype->	obj)	ty
-	   (formatta->	obj)	f
-	   (xml-type->	obj)	xty
-	   (unit->	obj)	u
-	   (explain->	obj)	ex
-	   (min->	obj)	mi
-	   (max->	obj)	ma)))
+  ;; (optima:match line
+  ;;   0 1 2 3 4 6 7 8 19 23 24
+  ;;   ((LIST* c m n1 n2 ty _ f xty u _ _ _ _ _ _ _ _ _ _ ex _ _ _ mi ma _)
+  (setf (code-> obj)		(nth 0 line)
+	(must-> obj)		(nth 1 line)
+	(name1-> obj)		(nth 2 line)
+	(name2-> obj)		(nth 3 line)
+	(strtype-> obj)		(nth 4 line)
+	(formatta-> obj)	(nth 6 line)
+	(xml-type-> obj)	(nth 7 line)
+	(unit-> obj)		(nth 8 line)
+	(explain-> obj)		(nth 19 line)
+	(min-> obj)		(nth 23 line)
+	(max-> obj)		(nth 24 line))
   obj)
 
 (defmethod create :after ((cd CodeCode) (line LIST))
@@ -228,9 +235,11 @@
 (defmethod %number-value ((c CHECK-CODE:CODENUMBER) (val DOUBLE-FLOAT))
   (%number-value c (float val 0s0)))
 (defmethod %number-value ((c CHECK-CODE:CODENUMBER) (val STRING))
-  (if (ppcre:scan "^[0-9\.]+$" val)
-      (%number-value c (read-from-string val))
-      (%number-value c (float (1- (car (chc::max-> c))) 0s0))))
+  (if (string= "" val)
+      ""
+      (if (ppcre:scan "^[0-9\.]+$" val)
+	  (%number-value c (read-from-string val))
+	  (%number-value c (float (1- (car (chc::max-> c))) 0s0)))))
 (defmethod %number-value ((c CHECK-CODE:CODENUMBER) (n NULL))
   nil)
 
@@ -247,6 +256,10 @@
 (defmethod  repair ((c CHECK-CODE:CODECODE) (val INTEGER))
   (repair c (write-to-string val)))
 (defmethod  repair ((c CHECK-CODE:CODECODE) (val FLOAT))
+  (repair c (truncate val)))
+(defmethod  repair ((c CHECK-CODE:CODESTRING) (val INTEGER))
+  (format nil "'~A" (to-zenkaku (write-to-string val))))
+(defmethod  repair ((c CHECK-CODE:CODESTRING) (val FLOAT))
   (repair c (truncate val)))
 (defmethod  repair ((c CHECK-CODE:CODESTRING) (val STRING))
   (let ((max (chc::formatta-> c)))
@@ -270,6 +283,7 @@
 			 (for col :upfrom 0)
 			 (for code = (svref ary col))
 			 (for post = (and code (chrv:repair code cell)))
+			 (print (list row col cell))
 			 (when (and code post cell (not (equal cell post))
 				    (not (equiv cell post)))
 			   (collect (list row col cell post)))))))
@@ -302,7 +316,8 @@
   	(ole sheet :cells row (1+ col) :select)
   	(color         sheet row col)
   	(number-format sheet row col code)
-  	(%value        sheet row col post)))
+  	(%value        sheet row col post))
+  (check::reload! content-clojure sheet))
 
 (in-package :check-base) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun %name-repair (sheet row name)
@@ -312,7 +327,8 @@
 
 (defun name-repair (sheet)
   ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (format t "氏名欄の修正~%")
+  (chc::xls-checker-format "氏名欄の修正~%")
+  (force-output)
   (iter (for (line) :in (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3))))
 	(for row :upfrom 6)
 	;; (declare (type fixnum row))
@@ -327,29 +343,38 @@
 	  (t
 	   (check:fcolor sheet (:c row))))))
 
+(defun %bformat (sheet row column)
+  (set-format sheet (column row) "yyyy/mm/dd"))
+
 (defun %bcore (sheet row column value)
   (excel::value! sheet (column row)
 		 (util::normal-date-string value))
   (check:rcolor sheet (column row)))
 
-(defun %bformat (sheet row column)
-  (set-format sheet (column row) "yyyy/mm/dd"))
-
 (defun birthday-repair (sheet contents)
   (let* ((colnum #[contents :bcol])
-	 (col (excel::number-to-col colnum)))
-    (format t "生年月日欄の修正~%")
-    (iter (for (line) :in (value sheet (col 6) (col (lastrow sheet :y 5 :x colnum))))
+	 (col (excel::number-to-col colnum))
+	 (lr  (lastrow sheet :y 5 :x colnum))
+	 (val (value sheet (col 6) (col lr))))
+    (chc::xls-checker-format "生年月日欄の修正~%")
+    (force-output)
+    (optima:match val
+      ((TYPE LIST)
+       (iter (for (line) :in val)
 	  (for row :upfrom 6)
 	  (%bformat sheet row col)
 	  (cond
 	    ((typep line 'dt:date-time)
 	     (next-iteration))
 	    (t
-	     (%bcore sheet row col line))))))
+	     (%bcore sheet row col line)))))
+      ((TYPE ATOM)
+       (%bformat sheet 6 col)
+       (%bcore sheet 6 col val)))))
 
 (defun insurance-repair (sheet)
-  (format t "保険者欄の修正~%")
+  (chc::xls-checker-format "保険者欄の修正~%")
+  (force-output)
   (set-format sheet (:b 2) (:c 2) "@")
   (check:value! sheet 2 2 "00263129")
   (check:value! sheet 2 3 "京都建築国民健康保険組合"))
@@ -462,7 +487,8 @@
   (declare (optimize debug safety))
   (if (not (has-nbps? contents))
       (awhen (has-jds? contents)
-	(format t "Hba1c欄の修正~%")
+	(chc::xls-checker-format "Hba1c欄の修正~%")
+	(force-output)
 	;; (1) 入力シートのインデックスを直す
 	(index-repair sheet it)
 	;; (2) コード一覧に3D046000001906202を付け足す
@@ -511,7 +537,7 @@
 (defmethod  match ((s STRING) (n2 NULL))
   (if (%string-none? s)
       (error 'NOTHING-WRITTEN)
-      (error 'WRITTEN-2)))
+      (error 'WRITTEN2)))
 (defmethod  match (s n)
   (error 'SOMETHING-WRONG))
 
@@ -565,7 +591,8 @@
 		   (%operate-something sheet something)))))
 
 (defun repair (sheet contents)
-  (format t "相関的修正~%")
+  (chc::xls-checker-format "相関的修正~%")
+  (force-output)
   (iter (for (opinion boolean) :in (%indexes))
 	(%classify sheet contents opinion boolean))
   (check:reload! contents sheet))
@@ -594,7 +621,8 @@
 	  (appending (%line-collect line row indexes)))))
 
 (defun repair (sheet contents)
-  (format t "必須項目の欠損確認~%")
+  (chc::xls-checker-format "必須項目の欠損確認~%")
+  (force-output)
   (iter (for cell :in (%collect contents))
 	(check:fcolor sheet ((check:num->col (check::%cell-x cell))
 			     (check::%cell-y cell)))))
@@ -624,7 +652,8 @@
 	    (appending (chm::%line-collect line row ns)))))
 
 (defun repair (sheet contents)
-  (format t "必須項目の修正~%")
+  (chc::xls-checker-format "必須項目の修正~%")
+  (force-output)
   (iter (for m :in (%COLLECT contents))
 	(check:value! sheet (check::%cell-y m) (check::%cell-x m) "2")
 	(check:rcolor sheet ((check:num->col (check::%cell-x m))
@@ -666,7 +695,8 @@
 	    (appending leaf)))))
 
 (defun repair (sheet contents)
-  (format t "選択的修正~%")
+  (chc::xls-checker-format "選択的修正~%")
+  (force-output)
   (iter (for gen = (%indexes contents))
   	(with birthday = #[contents :birthlist])
   	(for line :in #[contents :body])
@@ -679,8 +709,9 @@
 (in-package :check-hanzen) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (declaim (inline %check-string %check-number %check))
 
+(format t "check-string")
 (defun %check-string (sheet col contents)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (for cell :in contents)
 	(for row :upfrom 6)
 	(declare (type fixnum row col))
@@ -700,8 +731,9 @@
 	     (check:value! sheet row col post)
 	     (check:rcolor sheet ((check:num->col col) row)))))))
 
+(format t "check-number")
 (defun %check-number (sheet col contents)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (for cell :in contents)
 	(for row :upfrom 6)
 	(declare (type fixnum row))
@@ -715,6 +747,7 @@
 	     (check:value! sheet row col (& read-from-string to-hankaku cell))
 	     (check:rcolor sheet ((check:num->col col) row)))))))
 
+(format t "check")
 (defun %check (sheet col index contents)
   (typecase index
     (CHECK-CODE:CODESTRING
@@ -724,8 +757,9 @@
     (CHECK-CODE:CODECODE
      (%check-number sheet col contents))))
 
+(format t "repair")
 (defun repair (sheet contents)
-  (declare (optimize speed))
+  ;; (declare (optimize speed))
   (iter (with index = #[contents :indexf])
 	(declare (type array index))
 	(for i :from 0 :to (1- (length index)))
@@ -740,11 +774,13 @@
 ;; f:/20130628/kmove/2013.06.29特定健診データ簡易入力シートVer4.0.0 (1).xls
 ;; f:/20130628/kmove/2013.6.1特定健診データ簡易入力シートVer4.0.0 (1).xls
 (defun %core (excel-application filename &key (close nil))
+  (declare (optimize (debug 3) (safety 3) (speed 0)))
   (let ((f (namestring filename)))
     (with-excel-book (excel-application b f :close close :debugger t)
       (let* ((sheet    (ole b :worksheets :item "健診結果入力シート"))
 	     (hash     (check-code:info b))
-	     (contents (sheet-contents sheet hash)))
+	     (contents (sheet-contents sheet hash))
+	     (newfile  #[contents :newfile f]))
 	;; (check-body:repair sheet contents)
 	(check-base:name-repair sheet)
 	(check-base:birthday-repair sheet contents)
@@ -755,12 +791,25 @@
 	(check-must:repair sheet contents)
 	(check-either:repair sheet contents)
 	(check-hanzen:repair sheet contents)
-	(excel::save-book b #[contents :newfile f] :xls)))))
+	(excel::save-book b newfile :xls)
+	(format t "処理が終わりました。~%")
+	newfile))))
+
+(defun parse-filename (path)
+  (util::regex-replace-alist
+   path
+   '(("\\\\" . "/")
+     ("\"" . ""))))
 
 (defun file-main (file &key (quit nil) (close nil))
   (declare (optimize (speed 0) (safety 3) (debug 3)))
   (with-excel (app :visible t :quit quit :debugger t)
-    (%core app file :close close)))
+    (let* ((truefile (parse-filename file))
+	   (newfile (%core app truefile :close close))
+	   (dfile   (merge-pathnames #P"d:/特定健診結果データ/"
+	   			     newfile)))
+      (unless (cl-fad:file-exists-p dfile)
+      	(cl-fad:copy-file newfile dfile)))))
 
 (defun directory-main (directory)
   (with-excel (app :visible t :quit nil :debugger t)
@@ -768,4 +817,4 @@
    (lambda (file) (%core app file :close t))
    (directory-list directory :type "xls"))))
 
-;; y:/23吉田/未処理/20131210 太子道診療所/特定健診データ簡易入力シートVer5.4.0 20130812.xls
+;; y:/23吉田/未処理/20140106 吉祥院病院(南)/20131017簡易入力シート(Hba1c改定対応) .xls

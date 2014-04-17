@@ -40,12 +40,12 @@
 	     (:constructor zenken-gen
 			   (年度末支部 名 保険証番号 行 氏名 本人／家族
 性別 生年月日 年度末年齢 途中取得日
-途中喪失日 除外 整理番号 発行日 受診日
+途中喪失日 除外 整理番号 発行日 受診日 受診区分
 健診機関 取込方法 保健指導 指導日 支援
 証支部 個人番号 組合番号 支部 分会 班 表示順))
 	     (:constructor make-zenken (支部)))
   年度末支部 名 保険証番号 行 氏名 本人／家族 性別 生年月日 年度末年齢 途中取得日 途中喪失日
-  除外 整理番号 発行日 受診日 健診機関 取込方法 保健指導 指導日 支援 証支部 個人番号 組合番号
+  除外 整理番号 発行日 受診日 受診区分 健診機関 取込方法 保健指導 指導日 支援 証支部 個人番号 組合番号
   支部 分会 班 表示順 上名 下名 分会名 現支部 健診機関コード)
 
 ;; (defun chomp (str)
@@ -71,6 +71,16 @@
 			  支部 分会 班 表示順 上名 下名 分会名 現支部 健診機関コード) ,instance
      ,@body))
 
+(defun solve-bunkai (kgbg shibu bunkai bhash)
+  (cl-irregsexp:if-match-bind
+   ((char) (char) "85" (+ (char)))
+   (the string kgbg)
+   (gethash (format nil "~2,'0d~2,'0d" shibu bunkai) bhash)
+   (cl-irregsexp:if-match-bind
+    ((integer :length 2) (s (integer :length 2)) (b (integer :length 2)) (+ (string)))
+    (the string kgbg)
+    (gethash (format nil "~2,'0d~2,'0d" s b) bhash))))
+
 (defun create-zenken (list bhash)
   (declare (type list list) (type hash-table bhash)
 	   ;; (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0))
@@ -87,7 +97,7 @@
 	    発行日	(date-string-normalize (strdt 発行日))
 	    受診日	(date-string-normalize (strdt 受診日))
 	    指導日	(date-string-normalize (strdt 指導日))
-	    分会名	(gethash (format nil "~A~A" 支部 分会) bhash)
+	    分会名	(solve-bunkai 保険証番号 支部 分会 bhash)
 	    現支部	(if (equal "85" 証支部)
 			    (subseq (the string 保険証番号) 4 6)
 			    証支部)
@@ -113,12 +123,61 @@
 	    (not 途中取得日) (not 途中喪失日)
 	    (equal "0" 除外))))))
 
-(defun to-data (filename)
-  (iter (with bhash = (kensin:bunkai-hash))
-	(for line :in-csv filename :code :SJIS)
-	(unless (first-time-p)
-	  (collect (create-zenken line bhash)))))
+;; (defun to-data (filename)
+;;   (iter (with bhash = (kensin:bunkai-hash))
+;; 	(for line :in (csv-read-to-list filename :code :SJIS))
+;; 	(unless (first-time-p)
+;; 	  (handler-case (collect (create-zenken line bhash))
+;; 	    (sb-int:simple-program-error (e)
+;; 	      (declare (ignorable e))
+;; 	      (next-iteration))))))
 
+(defun to-data (filename)
+  (let ((bhash (kensin:bunkai-hash)))
+    (util::csv-read-filter-map
+     filename
+     (lambda (line)
+       (handler-case (create-zenken line bhash)
+	 (sb-int:simple-program-error (e)
+	   (declare (ignorable e)) nil)))
+     (lambda (z)
+       (and (typep z 'zenken)
+	    (not (equal (zenken-年度末支部 z) "年度末支部"))))
+     :code :SJIS)))
+
+
+(defun iterate (func &key (file %file))
+  (declare (optimize (speed 3) (safety 0) (debug 0))
+	   (type pathname file))
+  (let ((bhash (kensin::bunkai-hash)))
+    (util::csv-read-iter
+     file
+     (lambda (line)
+       (optima:match line
+	 ((list* "" _) nil)
+	 ((list* "年度末支部" _) nil)
+	 ;; ((list* _ _ _ _ _ _ _ _ _ _ _ _ "00000000000" _) nil)
+	 (_
+	  (funcall func (create-zenken line bhash)))))
+       :code :SJIS)))
+
+(defun filter-map (pred func &key (file %file))
+  (let (r)
+    (declare (dynamic-extent r))
+    (iterate
+      (lambda (zenken)
+	(if (funcall pred zenken)
+	    (setq r (cons (funcall func zenken) r))))
+      :file file)
+    r))
+
+(defun shibu-list
+    (shibu-code &key (file %file) (function #'identity) (filter #'identity))
+  (filter-map
+   (lambda (z) (and (string= shibu-code (zenken-支部 z))
+		    (funcall filter z)))
+   function
+   :file file))
 
 (defmacro defhash (defname keyfn)
   `(defun ,defname (filename &key (verbose t))
@@ -129,19 +188,15 @@
 
 (defhash make-hash	    (lambda (o) (normal-date->string (strdt (zenken-生年月日 o)))))
 (defhash make-name-hash     #'zenken-氏名)
-;; (defhash make-jusinken-hash #'zenken-整理番号)
-(defun make-jusinken-hash (file)
-  (iter (with bhash = (kensin:bunkai-hash))
-	(with hash = (make-hash-table :test #'equal))
-	(for line :in-csv file :code :SJIS)
-	(when (first-time-p) (next-iteration))
-	(optima:match line
-	  ((list* _ _ _ _ _ _ _ _ _ _ _ _ "00000000000" rest)
-	   (next-iteration))
-	  ((list* _ _ _ _ _ _ _ _ _ _ _ _ jnum rest)
-	   (setf (gethash jnum hash) (create-zenken line bhash))))
-	(finally (return hash))))
 
+(defun make-jusinken-hash (file)
+  (let ((hash (make-hash-table :test #'equal)))
+    (iterate
+      (lambda (zenken)
+	(with-slots (整理番号) zenken
+	  (setf (gethash 整理番号 hash) zenken)))
+      :file file)
+    hash))
 
 (defun make-jusinken-simple-hash (filename)
   (iter (for line :in (to-data filename))
@@ -179,6 +234,40 @@
 	  			  発行日 分会 班 分会名 現支部
 	  			  年度末支部 整理番号))))
 	  )))
+
+(defun id-hash2 (filename basedate)
+  (iter (for line :in (to-data filename))
+	(with-zenken-slot line
+	  ;; (if (and (>= (how-old 生年月日 basedate) 40)
+	  ;; 	   (<= (how-old 生年月日 basedate) 75))
+	  ;;     (shash line
+	  ;; 	     :condition t
+	  ;; 	     :key   #'zenken-個人番号
+	  ;; 	     :value (lambda (o)
+	  ;; 		      (with-zenken-slot o
+	  ;; 			(list 氏名 受診日
+	  ;; 			      (if (equal 健診機関コード "0000000000") nil 健診機関コード)
+	  ;; 			      (if (string-null 健診機関) nil 健診機関)
+	  ;; 			      (if (string-null 取込方法) nil 取込方法)
+	  ;; 			      発行日 分会 班 分会名 現支部
+	  ;; 			      年度末支部 整理番号)))))
+	  (shash line
+	  	 :condition t
+	  	 :key   (lambda (o)
+			  (format nil "0~A" (zenken-個人番号 o)))
+	  	 :value (lambda (o)
+	  		  (with-zenken-slot o
+	  		    (list 途中取得日 途中喪失日))))
+	  )))
+
+(defun id-hash3 ()
+  (let ((hash (make-hash-table :test #'equal)))
+    (iterate
+     (lambda (z) (setf (gethash (zenken-個人番号 z) hash) z))
+     :file %file)
+    hash))
+
+;; "f:/20130628/特定健診全件データ.csv"
 
 ;; (defun complex-hash (filename)
 ;;   (iter (for line :in (to-data filename))
@@ -230,7 +319,7 @@
   (iter (with array = (make-array '(96 13) :initial-element nil))
 	(for line :in-csv file :code :SJIS)
 	(if (first-time-p) (next-iteration))
-	(cl-match:match line
+	(optima:match line
 	  ((list* shibu _ _ _ _ _ _ _ o g r _ _ _ date hospital _)
 	   (if (and (kensin:kensin-year? (read-from-string o))
 		    (string-space-filled? g)
@@ -361,7 +450,7 @@
 (defun row-major-aref-sum (array from to &key (plus 0))
   (apply #'+ (row-major-aref-list array from to :plus plus)))
 
-(defvar yearlist '((0 20) (21 30) (31 40) (41 50) (51 60) (61 70) (71 75)))
+(defparameter yearlist '((0 19) (20 29) (30 39) (40 49) (50 59) (60 69) (70 75)))
 
 (defun figure (bunkai plus)
   (with-slots (h k m f total) bunkai
@@ -376,6 +465,12 @@
       "-"
       (util::percent num div)))
 
+(defun take40-75 (list)
+  (butlast (util::take-right list 5)))
+
+(defun sum40-75 (list)
+  (apply #'+ (take40-75 list)))
+
 (defun figure0 (bunkai)
   (let ((l1 (figure1 bunkai))
 	(l2 (figure2 bunkai)))
@@ -384,7 +479,12 @@
        (lambda (x1 x2) (append (list shibu-name name)
 			       x2
 			       x1
-			       (mapcar #'percent-or-nil x2 x1)))
+			       (mapcar #'percent-or-nil x2 x1)
+			       (let ((sum-over-40 (sum40-75 x2))
+				     (sum-over-40-whole (sum40-75 x1)))
+				 (list sum-over-40
+				       sum-over-40-whole
+				       (percent-or-nil sum-over-40 sum-over-40-whole)))))
        l1 l2))))
 (defun figure1 (bunkai) (figure bunkai 76))
 (defun figure2 (bunkai) (figure bunkai 0))
@@ -453,5 +553,34 @@
 
 (defun calc ()
   (zc::%calc))
+
+;; 受診していないが、受診券を発行したもの
+(defun dock-diff (&key (filter #'identity))
+  (let ((hash (make-jusinken-hash %file))
+	r)
+    (util::csv-read-iter
+     ksetting::*dock-output-file*
+     (lambda (line)
+       (let ((jnum (sixth line)))
+	 (if (and (eq (length jnum) 11)				; 40歳未満75歳より上を排除
+		  (eq (read-from-string (string-take jnum 2))	; 設定年度以外を排除
+		      (mod ksetting::*year* 1000)))
+	     (aif (gethash jnum hash)
+		  (if (and (target? it)
+			   ;; 受診記録がない。->受診記録があれば、全件データでわかるため。
+			   (not (zenken-受診日 it))
+			   ;; 受診券発行記録がある。
+			   (ZENKEN-発行日 IT)
+			   (funcall filter it))
+		      (setq r (cons it r))))))))
+    (REVERSE R)))
+
+(defun dock-diff-shibu (shibu-code)
+  (dock-diff
+   :filter (lambda (z) (string= shibu-code (zenken-支部 z)))))
+
+(defun dock-diff-shibu-number (shibu-code)
+  (mapcar (lambda (z) (list (zenken-保険証番号 z) (zenken-整理番号 z)))
+	  (dock-diff-shibu shibu-code)))
 
 (in-package :cl-user)

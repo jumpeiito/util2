@@ -414,4 +414,9 @@
 				    (getf data :name)))
 		(iterate:finally (iterate::return h))))
 
+(defparameter %bunkai-hash% (bunkai-hash))
+
+(defun bunkai (code)
+  (gethash code %bunkai-hash%))
+
 (in-package :cl-user)

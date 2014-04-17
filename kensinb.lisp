@@ -49,6 +49,7 @@
        ("2613200209" . "田辺中央病院")
        ("2619700053" . "社会保険京都病院")
        ("2610405124" . "康生会武田病院")
+       ("2610405231" . "武田健診センター")
        ("2619600311" . "京都市立病院")
        ("2614001234" . "洛西シミズ病院")
        ("2610305993" . "大和健診センター")
@@ -112,6 +113,7 @@
        ("2613200209" . "田辺中央")
        ("2619700053" . "社保")
        ("2610405124" . "武田")
+       ("2610405231" . "武田")
        ("2619600311" . "市立")
        ("2614001234" . "洛西シミズ")
        ("2610305993" . "大和")
@@ -153,12 +155,15 @@
 
 (defparameter dock-hash (dock-hash-generator))
 
-(defun dock? (hcode year)
+(defgeneric dock? (hcode year))
+(defmethod  dock? ((hcode String) (year String))
   (aif (gethash hcode dock-hash)
        (if (member year it :test #'equal)
 	   (values (first it) (second it))
 	   nil)
        nil))
+(defmethod  dock? ((hcode String) (year Fixnum))
+  (dock? hcode (write-to-string year)))
 
 (defparameter hospital-shibu-hash-gen
   (push-hash-table
@@ -249,6 +254,12 @@
 
 (defun kensin-year? (year)
   (and (>= year 40) (< year 75)))
+
+(defun jnum->nendo (jnum)
+  (cl-irregsexp:if-match-bind
+   ((nendo (string 2)) _)
+   (the simple-string jnum)
+   (+ 2000 (read-from-string nendo))))
 
 (defun jnum->nendo-end (jnum)
   (cl-irregsexp:if-match-bind

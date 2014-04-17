@@ -146,7 +146,7 @@
 
 (defun %collection ()
   (iter (for dir :in (search-path))
-	(appending (allf dir :type "zip" :regexp "\\d{10}_\\d{8}_\\d{9}_[0-9]"))))
+  	(appending (allf dir :type "zip" :regexp "\\d{10}_\\d{8}_\\d{9}_[0-9]"))))
 
 ;; (defun parse ()
 ;;   (iter (with collection = (%collection))
@@ -169,6 +169,22 @@
 		   (reverse r)
 		   (inner (drop subl length) (cons (take subl length) r)))))
       (inner l nil))))
+
+(defmacro %parse (n)
+  (let ((gensym-list (mapcar (lambda (_) (declare (ignore _)) (gensym))
+			     (iota :from 1 :to n)))
+	(list (gensym)))
+    `(let* ((,list (list-split (%collection) ,n))
+	    ,@(mapcar-with-index
+	       (lambda (i gensym)
+		 `(,gensym (sb-thread::make-thread (lambda () (parse1 (nth ,i ,list))))))
+	       gensym-list))
+       (append ,@(mapcar
+		  (lambda (g)
+		    `(sb-thread::join-thread ,g))
+		  gensym-list)))))
+
+;; (%parse 6)
 
 (defun parse ()
   (let* ((l  (list-split (%collection) 6))
@@ -321,11 +337,12 @@
 	       :condition t
 	       :key #'third)))
 
-(defun %create (line 172hash xhash zhash)
+(defun %create (line 172hash xhash zhash zhash2)
   (let1 obj (create-dock line 172hash xhash)
     (with-slots (全件 整理番号) obj
       (if (eq (length 整理番号) 11)
-	  (setq 全件 (gethash 整理番号 zhash)))
+	  (setq 全件 (gethash 整理番号 zhash))
+	  (setq 全件 (gethash (format nil "~9,,,'0@A" 整理番号) zhash2)))
       obj)))
 
 (defparameter title
@@ -358,8 +375,9 @@
   (iter (with 172hash = (kensin::172-hash))
 	(with xhash   = (%XmlHash))
 	(with zhash   = (%ZenkenHash))
+	(with zhash2  = (zenken::id-hash3))
 	(for line :in-csv ksetting::*dock-output-file* :code :UTF-8)
-	(for obj = (%create line 172hash xhash zhash))
+	(for obj = (%create line 172hash xhash zhash zhash2))
 	(if (funcall f obj)
 	    (collect obj :into pot))
 	(finally (return ;; (sort2 pot string< dock-健診機関)
@@ -444,6 +462,7 @@
 	  (%color sh set-colorindex excel::xlgray25 gray)
 	  (%color sh set-colorindex excel::xlgray50 bl2)
 	  (border sh (:a 1) (:p lr))
-	  (excel::save-book bk (excel-name) :xls))))))
+	  (ole sh :range (format nil "A1:P~A" lr) :AutoFilter 1)
+	  (excel::save-book bk ksetting::*dock-file* :xls))))))
 
 (in-package :cl-user)
