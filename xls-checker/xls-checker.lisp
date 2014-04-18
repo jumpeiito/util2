@@ -127,6 +127,16 @@
    (lambda (c) (and c (equal code (chc::code-> c))))
    indexes))
 
+(defun now ()
+  (let* ((n (local-time::now)))
+    (format nil "~A~2,'0d~2,'0d~2,'0d~2,'0d~2,'0d"
+	    (local-time::timestamp-year n)
+	    (local-time::timestamp-month n)
+	    (local-time::timestamp-day n)
+	    (local-time::timestamp-hour n)
+	    (local-time::timestamp-minute n)
+	    (local-time::timestamp-second n))))
+
 (def-clojure sheet (l hash)
   ((insnumber	(cell l (2 2)))
    (created	(cell l (2 4)))
@@ -145,7 +155,7 @@
 			hcode
 			(cdr (assoc hcode hospital-alist :test #'equal))
 			(util::date-8 occurd)
-			(util::date-8 (dt:today)))))
+			(now))))
   (:nth       (num)
 	      (mapcar (lambda (line) (nth num line)) body))
   (:reload    (l)
