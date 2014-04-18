@@ -128,7 +128,7 @@
    indexes))
 
 (defun now ()
-  (let* ((n (local-time::now)))
+  (let* ((n (local-time::timestamp+ (local-time::now) 9 :hour)))
     (format nil "~A~2,'0d~2,'0d~2,'0d~2,'0d~2,'0d"
 	    (local-time::timestamp-year n)
 	    (local-time::timestamp-month n)
