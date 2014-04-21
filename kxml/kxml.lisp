@@ -405,12 +405,15 @@
 		 :type "csv"))
 
 (defun make-title (func op)
-  (format op "~{~A~^,~}~%"
-	  (append (make-list 8 :initial-element "")
-		  (mapcar
-		   (lambda (l)
-		     (funcall func (if (listp l) (car l) l)))
-		   (minimum-code)))))
+  (flet ((f (arg) (format op "~{~A~^,~}~%" arg)))
+    (let ((list (append (make-list 8 :initial-element "")
+			(mapcar
+			 (lambda (l)
+			   (funcall func (if (listp l) (car l) l)))
+			 (minimum-code)))))
+      (if (eq op :list)
+	  list
+	  (f list)))))
 
 (defun english-title (op)  (make-title #'identity op))
 (defun japanese-title (op) (make-title #'kcsv::code->title op))
@@ -420,12 +423,21 @@
 
 (defun kxml-to-csv (zipfile)
   (call-with-output-file2 (csvname zipfile)
+    ;; (lambda (op)
+    ;;   (english-title op)
+    ;;   (japanese-title op)
+    ;;   (format op "~{~A~}"
+    ;; 	      (map-with-kxml (lambda (obj) (minimum obj :string t))
+    ;; 			     zipfile)))
     (lambda (op)
-      (english-title op)
-      (japanese-title op)
-      (format op "~{~A~}"
-	      (map-with-kxml (lambda (obj) (minimum obj :string t))
-			     zipfile)))
+      (let* ((list `(,(english-title :list)
+		     ,(japanese-title :list)
+		     ,@(map-with-kxml #'minimum zipfile)))
+	     (vertical-list
+	      (reduce (lambda (x y) (mapcar #'cons y x))
+		      (cdr list)
+		      :initial-value (mapcar #'list (car list)))))
+	(format op "~{~{~A~^,~}~%~}" (mapcar #'reverse vertical-list))))
     :code :SJIS))
 
 ;; f:/zip/MAIN/2013/2612800710_00263129_201312280_1.zip
