@@ -263,24 +263,34 @@ orのstring-null版。
 
 (defun upable-files (mainhash)
   ())
-;; (defparameter h (let ((ksetting::*year* 2013))
-;; 		  (mainhash)))
 
-;; (iter (for (k v) :in-hashtable h)
-;;       (print (list (level-> v) (sign-> v))))
-
-;; (iter (with hash = (mainhash))
-;;       (for (k v) :in-hashtable (filehash))
-;;       (collect
-;; 	  (mapcar (lambda (hsido-structure)
-;; 		    (upable? (gethash (hsido-rnumber hsido-structure) hash)))
-;; 		  v)))
-
-(defun test ()
-  (call-with-output-file2 "test.csv"
+(defun csv-output ()
+  (call-with-output-file2 "f:/util2/hsido/hsido.csv"
     (lambda (op)
       (let* ((ksetting::*year* 2013)
 	     (hash (kensin::r165-hash)))
 	(mapc (lambda (p) (output p hash op))
 	      (all-people (mainhash)))))
     :code :SJIS))
+
+(defparameter xls-title
+  '(("記号" "番号" "利用券番号" "氏名" "生年月日" "保健指導レベル"
+     "院所" "初回F" "継続F" "中間F" "最終F"
+     "脱落" "初回面接実施日" "最終面接実施日" "UP済")))
+
+(defparameter xls-width
+  #(9.63 5.88 12.13 15.75 11.00 11.13 14.50 6 6 6 6 6 9 9 9))
+
+(defun title-insert (sheet)
+  (ole sheet :range "1:1" :insert)
+  (excel::decide-range-value
+   sheet xls-title))
+
+(defun xls ()
+  (with-excel (app :visible t :quit nil :debugger t)
+    (with-excel-book (app book "f:/util2/hsido/hsido.csv" :close nil :debugger t)
+      (let* ((sheet (ole book :Worksheets :Item 1))
+	     (lr (excel::lastrow sheet :x 4)))
+	(title-insert sheet)
+	(excel::set-colwidth sheet xls-width)
+	(excel::border sheet (:a 1) (:o (1+ lr)))))))

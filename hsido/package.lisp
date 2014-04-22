@@ -6,4 +6,9 @@
   ;; 	   #:repair-jnumber
   ;; 	   #:topdir)
   (:import-from #:cl-test-more #:is)
+  (:import-from #:cl-win32ole
+		#:ole)
+  (:import-from #:excel
+		#:with-excel
+		#:with-excel-book)
   (:export #:@write))
