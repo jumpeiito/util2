@@ -268,7 +268,7 @@ orのstring-null版。
 (defun csv-output ()
   (call-with-output-file2 *file*
     (lambda (op)
-      (let* ((ksetting::*year* 2013)
+      (let* (;; (ksetting::*year* 2013)
 	     (hash (kensin::r165-hash)))
 	(mapc (lambda (p) (output p hash op))
 	      (all-people (mainhash)))))
