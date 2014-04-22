@@ -21,6 +21,7 @@ AがB、BがCに依存しているとき	-> ((C B) (B A))
 
 (defvar FILES		(directory-list topdir :type "zip"))
 (defvar OUTPUT-FILE	ksetting::*hsido-output-file*)
+(defparameter *file*	"f:/util2/hsido/hsido.csv")
 (defgeneric output (obj hash op))
 
 (defparameter *REMOVE-IF-NOT-KENSIN-YEAR* t)
@@ -261,11 +262,11 @@ orのstring-null版。
   (iter (for (k v) :in-hashtable mainhash)
 	(if (upable? v) (collect v))))
 
-(defun upable-files (mainhash)
-  ())
+;; (defun upable-files (mainhash)
+;;   ())
 
 (defun csv-output ()
-  (call-with-output-file2 "f:/util2/hsido/hsido.csv"
+  (call-with-output-file2 *file*
     (lambda (op)
       (let* ((ksetting::*year* 2013)
 	     (hash (kensin::r165-hash)))
@@ -288,7 +289,7 @@ orのstring-null版。
 
 (defun xls ()
   (with-excel (app :visible t :quit nil :debugger t)
-    (with-excel-book (app book "f:/util2/hsido/hsido.csv" :close nil :debugger t)
+    (with-excel-book (app book *file* :close nil :debugger t)
       (let* ((sheet (ole book :Worksheets :Item 1))
 	     (lr (excel::lastrow sheet :x 4)))
 	(title-insert sheet)
