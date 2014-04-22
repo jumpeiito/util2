@@ -1,2 +1,4 @@
-dock/.dock
-dock/.setcontract
+kserv/.dock
+kserv/.setcontract
+*.csv
+*.exe
