@@ -371,7 +371,7 @@
 	      (xrep::stp-to-string
 	       (stp:insert-child (docs-of x)
 				 (stp:make-processing-instruction "xml-stylesheet"
-								  "href='hsido.xsl' type='text/xsl'")
+								  "href='file:///f:/util2/kxml/hsido.xsl' type='text/xsl'")
 				 0))))))
 
 ;; ------------------------------------------------------------

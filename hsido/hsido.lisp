@@ -17,9 +17,6 @@ A,BがCに依存しているとき	-> (C B A)
 AがB、BがCに依存しているとき	-> ((C B) (B A))
 
 |#
-
-
-(defvar FILES		(directory-list topdir :type "zip"))
 (defvar OUTPUT-FILE	ksetting::*hsido-output-file*)
 (defparameter *file*	"f:/util2/hsido/hsido.csv")
 (defgeneric output (obj hash op))
@@ -29,7 +26,7 @@ AがB、BがCに依存しているとき	-> ((C B) (B A))
 (defun @write ()
   (call-with-output-file2 output-file
     (lambda (op)
-      (iter (for zip :in files)
+      (iter (for zip :in (directory-list topdir :type "zip"))
 	    (mapc (lambda (line)
 		    (format op "~{~A~^,~}~%" line))
 		  (kensin::hs/parse-zip-main zip))))))
@@ -295,3 +292,47 @@ orのstring-null版。
 	(title-insert sheet)
 	(excel::set-colwidth sheet xls-width)
 	(excel::border sheet (:a 1) (:o (1+ lr)))))))
+
+(defun person-xml-basename (p)
+  (mapcar (compose #'pathname-name #'hsido-xmlname)
+	  (file-> p)))
+
+(defun person-xml-fullname (p)
+  (mapcar (compose #'namestring #'hsido-xmlname)
+	  (file-> p)))
+
+(defun html-line-base (p hash-or-nil)
+  (format nil "~{<td>~A</td>~}"
+	  (append (hsido-person-core p)
+		  (hsido-person-hospital p)
+		  (hsido-person-sign p)
+		  (hsido-person-interrupt p)
+		  (hsido-person-date p)
+		  (hsido-person-upload p hash-or-nil))))
+
+(defun html-line-url (p)
+  (iter (for (full . base) :in (mapcar #'cons
+				       (person-xml-fullname p)
+				       (person-xml-basename p)))
+	(collect (format nil "<a href=\"file:///~A\">~A</a>" full base)
+	  :into pot)
+	(finally (return (format nil "~{<td>~A</td>~}" pot)))))
+
+(defun html-line (p hash-or-nil op)
+  (format op "<tr>~A~A</tr>~%"
+	  (html-line-base p hash-or-nil)
+	  (html-line-url p)))
+
+(defun make-html ()
+  (call-with-output-file2 "index.html"
+    (lambda (op)
+      (cl-who:with-html-output (op)
+	(:html :lang "ja"
+	     (:head
+	      (:meta :http-equiv "Content-Type" :content "text/html"
+		     :charset "UTF-8"))
+	     (:body
+	      (:table :border "1" :cellspacing "0"
+	       (loop
+		  :for p :in (all-people (mainhash))
+		  :do (cl-who:str (html-line p nil op))))))))))
