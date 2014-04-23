@@ -206,7 +206,7 @@
   (mapcar (lambda (line)
 	    (format nil "~{~A~^,~}~%"
 		    (mapcar (lambda (n) (nth n line))
-			    (list 5 6 10))))
+			    (list 5 10 6))))
 	  rd))
 
 (defun dock-writer (&key (force nil))
