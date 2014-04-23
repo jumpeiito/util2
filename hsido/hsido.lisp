@@ -325,7 +325,7 @@ orのstring-null版。
 
 (defun make-html ()
   (let ((hash (kensin::r165-hash)))
-    (call-with-output-file2 "index.html"
+    (call-with-output-file2 "f:/util2/hsido/index.html"
       (lambda (op)
 	(cl-who:with-html-output (op)
 	  (:html :lang "ja"
