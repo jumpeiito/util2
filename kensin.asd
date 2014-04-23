@@ -63,14 +63,14 @@
    			 (:file "receive" :depends-on ("package"))))
    (:file "r172.struct" :depends-on ("package"))
    (:file "r172"	:depends-on ("r172.struct"))
-   (:module :kserv
-   	    :components ((:file "package")
-   			 (:file "kserv" :depends-on ("package"))))
    (:module :hsidoxml
    	    :components ((:file "package")
    			 (:file "code" :depends-on ("package"))
    			 (:file "hsidoxml" :depends-on ("package" "code"))
 			 (:file "hsido-feature" :depends-on ("package" "code"))))
+   (:module :kserv
+   	    :components ((:file "package")
+   			 (:file "kserv" :depends-on ("package"))))
    ;; (:module :xls-value-check
    ;; 	    :components ((:file "package")
    ;; 			 (:file "xvc" :depends-on ("package"))))

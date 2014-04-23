@@ -267,7 +267,8 @@
 		     (rename-file zip (merge-pathnames #P"d:/zip/" zip))))
 	   (zip-directory-build)
 	   (make-parse-file)
-	   (hsido:@write)))))
+	   (hsido:@write)
+	   (hx::make-all-xml)))))
 
 (defmacro with-data3000-output ((output-port) &rest form)
   `(call-with-output-file2 ,ksetting::*data3000-output-file*
