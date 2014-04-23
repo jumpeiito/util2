@@ -1,0 +1,35 @@
+html
+{
+    font-family: fantasy;
+    color: saddlebrown;
+}
+
+td.first
+{
+    background-color: bisque;
+}
+
+td.plan
+{
+    background-color: burlywood;
+}
+
+td.result
+{
+    background-color: wheat;
+}
+
+td.inter
+{
+    background-color: khaki;
+}
+
+td.final
+{
+    background-color: peachpuff;
+}
+
+td.title
+{
+    background-color: lightsteelblue;
+}
