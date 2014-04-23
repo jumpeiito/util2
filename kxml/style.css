@@ -4,32 +4,123 @@ html
     color: saddlebrown;
 }
 
-td.first
-{
-    background-color: bisque;
-}
+/* td.first */
+/* { */
+/*     background-color: bisque; */
+/* } */
 
-td.plan
-{
-    background-color: burlywood;
-}
+/* td.plan */
+/* { */
+/*     background-color: burlywood; */
+/* } */
 
-td.result
-{
-    background-color: wheat;
-}
+/* td.result */
+/* { */
+/*     background-color: wheat; */
+/*     left-margin: 2pt; */
+/* } */
 
-td.inter
-{
-    background-color: khaki;
-}
+/* td.inter */
+/* { */
+/*     background-color: khaki; */
+/* } */
 
-td.final
-{
+/* td.final */
+/* { */
+/*     background-color: peachpuff; */
+/* } */
+
+/* td.title */
+/* { */
+/*     background-color: lightsteelblue; */
+/* } */
+
+.main{
+    /* width: 100%; */
+    border-collapse: separate;
+    border-spacing: 0px;
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+}
+.main th{
+    /* width:25%; */
+    padding:4px;
+    text-align: left;
+    vertical-align: top;
+    color: #444;
+    background-color: #feedf3;
+    border-left: 3px double #999;
+    border-top: 1px solid #fff;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main td{
+    /* width:75%; */
+    padding:4px;
+    background-color: #fafafa;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main th.first{
+    /* width:75%; */
+    padding:4px;
     background-color: peachpuff;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main th.plan{
+    /* width:75%; */
+    padding:4px;
+    background-color: burlywood;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main th.result{
+    /* width:75%; */
+    padding:4px;
+    background-color: bisque;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main th.inter{
+    /* width:75%; */
+    padding:4px;
+    background-color: khaki;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+.main th.final{
+    /* width:75%; */
+    padding:4px;
+    background-color: wheat;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
 }
 
-td.title
+.continual
 {
-    background-color: lightsteelblue;
+    /* width:100%; */
+    border-collapse: separate;
+    border-spacing: 0px;
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;    
+}
+.continual th
+{
+    padding: 4px;
+    text-align: left;
+    vertical-align: top;
+    color: #444;
+    background-color: #ccc;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;    
+}
+.continual td
+{
+    padding: 4px;
+    background-color: #fafafa;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;    
 }
