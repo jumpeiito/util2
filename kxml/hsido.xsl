@@ -66,7 +66,7 @@
 	    </td>
 	  </tr>	  
 	  <tr>
-	    <td>継続的支援予定機関</td>
+	    <td>継続的支援予定期間</td>
 	    <td>
 	      <xsl:value-of select="//h:code[@code='1021000020']/../h:value/@value" />
 	      <xsl:value-of select="//h:code[@code='1021000020']/../h:value/@unit" />
