@@ -324,15 +324,16 @@ orのstring-null版。
 	  (html-line-url p)))
 
 (defun make-html ()
-  (call-with-output-file2 "index.html"
-    (lambda (op)
-      (cl-who:with-html-output (op)
-	(:html :lang "ja"
-	     (:head
-	      (:meta :http-equiv "Content-Type" :content "text/html"
-		     :charset "UTF-8"))
-	     (:body
-	      (:table :border "1" :cellspacing "0"
-	       (loop
-		  :for p :in (all-people (mainhash))
-		  :do (cl-who:str (html-line p nil op))))))))))
+  (let ((hash (kensin::r165-hash)))
+    (call-with-output-file2 "index.html"
+      (lambda (op)
+	(cl-who:with-html-output (op)
+	  (:html :lang "ja"
+		 (:head
+		  (:meta :http-equiv "Content-Type" :content "text/html"
+			 :charset "UTF-8"))
+		 (:body
+		  (:table :border "1" :cellspacing "0"
+			  (loop
+			     :for p :in (all-people (mainhash))
+			     :do (cl-who:str (html-line p hash op)))))))))))
