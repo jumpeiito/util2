@@ -3,15 +3,6 @@
 (defparameter dir #P"d:/特定健診システム/特定健診利用券情報/")
 (defparameter file (merge-pathnames dir "FKBB331.CSV"))
 
-;; (defun number-list ()
-;;   (remove-if
-;;    (lambda (line)
-;;      (optima:match line
-;;        ((LIST* _ "FKBB331" _) t)
-;;        ((LIST _) t)
-;;        (t nil)))
-;;    (util:csv-read-to-list file :code :SJiS)))
-
 (defun to-hash (list)
   (alexandria:alist-hash-table
    (mapcar
@@ -29,14 +20,6 @@
 	(finally (return (values header (to-hash pot))))))
 
 (defun make-body (jnumber-list hash)
-  ;; (mapcar
-  ;;  (lambda (jnum)
-  ;;    (aif (gethash jnum hash)
-  ;; 	  it
-  ;; 	  (progn
-  ;; 	    (warn "This jnumber(~A) may be inappropriate." jnum)
-  ;; 	    nil)))
-  ;;  jnumber-list)
   (iter (for jnum :in jnumber-list)
 	(aif (gethash jnum hash)
 	     (collect it)
