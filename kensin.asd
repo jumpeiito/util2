@@ -52,6 +52,7 @@
    (:module :hsido
    	    :components ((:file "package")
 			 (:file "hsido.struct")
+			 (:file "hsido.fkbb331")
    			 (:file "hsido" :depends-on ("package" "hsido.struct"))))
    (:module :dock
    	    :components ((:file "package")

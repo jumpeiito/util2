@@ -373,3 +373,7 @@ orのstring-null版。
 		   (loop
 		      :for p :in (all-people (mainhash))
 		      :do (cl-who:str (html-line p hash op)))))))))))
+
+(defun make-csv ()
+  (hfk::make-csv (mapcar #'jnumber->
+			 (all-people (mainhash)))))
