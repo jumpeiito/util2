@@ -294,34 +294,56 @@ orのstring-null版。
 	(excel::border sheet (:a 1) (:o (1+ lr)))))))
 
 (defun person-xml-basename (p)
-  (mapcar (compose #'pathname-name #'hsido-xmlname)
-	  (file-> p)))
+  (sort2 (mapcar (compose #'pathname-name #'hsido-xmlname)
+		 (file-> p))
+	 string< identity))
 
 (defun person-xml-fullname (p)
-  (mapcar (compose #'namestring #'hsido-xmlname)
-	  (file-> p)))
+  (sort2 (mapcar (compose #'namestring #'hsido-xmlname)
+		 (file-> p))
+	 string< identity))
 
-(defun html-line-base (p hash-or-nil)
-  (format nil "~{<td>~A</td>~}"
-	  (append (hsido-person-core p)
-		  (hsido-person-hospital p)
-		  (hsido-person-sign p)
-		  (hsido-person-interrupt p)
-		  (hsido-person-date p)
-		  (hsido-person-upload p hash-or-nil))))
+(defun html-td (value &key (class nil))
+  (format nil "<td~A>~A</td>"
+	  (aif class
+	       (format nil " class=\"~A\"" it)
+	       "")
+	  value))
 
-(defun html-line-url (p)
-  (iter (for (full . base) :in (mapcar #'cons
-				       (person-xml-fullname p)
-				       (person-xml-basename p)))
-	(collect (format nil "<a href=\"file:///~A\">~A</a>" full base)
-	  :into pot)
-	(finally (return (format nil "~{<td>~A</td>~}" pot)))))
+(defun html-first-inner-table (person)
+  (format nil "<table class=\"inner01\">~{<tr><td>~A</td></tr>~}</table>"
+	  (list
+	   (format nil "~A-~A" (kigo-> person) (bango-> person))
+	   (rnumber-> person)
+	   (name-> person))))
+
+(defun hsido-person-a-href (person)
+  (mapcar (lambda (full base)
+	    (format nil "<a href=\"file:///~A\">~A</a>" full base))
+	  (person-xml-fullname person)
+	  (person-xml-basename person)))
+
+(defun hsido-person-date-and-url (date url)
+  (format nil "<tr><td>~A</td><td>~A</td></tr>"
+	  date
+	  url))
+
+(defun html-second-inner-table (person)
+  (format nil "<table class=\"inner02\">~{~A~}</table>"
+	  (mapcar #'hsido-person-date-and-url
+		  (hsido-person-date person)
+		  (hsido-person-a-href person))))
 
 (defun html-line (p hash-or-nil op)
-  (format op "<tr>~A~A</tr>~%"
-	  (html-line-base p hash-or-nil)
-	  (html-line-url p)))
+  (format op "<tr>~A~A~A~A~A~A~A</tr>"
+	  (html-td (html-first-inner-table p))
+	  (html-td (birth-> p))
+	  (html-td (car (hsido-person-hospital p)) :class "hp")
+	  (format nil "~{<td class=\"sign\">~A</td>~}"
+		  (hsido-person-sign p))
+	  (html-td (car (hsido-person-interrupt p)) :class "interrupt")
+	  (html-td (car (hsido-person-upload p hash-or-nil)) :class "upload")
+	  (html-td (html-second-inner-table p))))
 
 (defun make-html ()
   (let ((hash (kensin::r165-hash)))
@@ -331,9 +353,23 @@ orのstring-null版。
 	  (:html :lang "ja"
 		 (:head
 		  (:meta :http-equiv "Content-Type" :content "text/html"
-			 :charset "UTF-8"))
+			 :charset "UTF-8")
+		  (:link :rel "stylesheet" :href "main.css" :type "text/css"))
 		 (:body
-		  (:table :border "1" :cellspacing "0"
-			  (loop
-			     :for p :in (all-people (mainhash))
-			     :do (cl-who:str (html-line p hash op)))))))))))
+		  (:table
+		   :border "1" :cellspacing "0"
+		   :class "main"
+		   (:tr
+		    (:th (cl-who:str "基礎情報"))
+		    (:th (cl-who:str "生年月日"))
+		    (:th (cl-who:str "院所"))
+		    (:th (cl-who:str "初回"))
+		    (:th (cl-who:str "継続"))
+		    (:th (cl-who:str "中間"))
+		    (:th (cl-who:str "最終"))
+		    (:th (cl-who:str "脱落"))
+		    (:th (cl-who:str "UP"))
+		    (:th (cl-who:str "URL")))
+		   (loop
+		      :for p :in (all-people (mainhash))
+		      :do (cl-who:str (html-line p hash op)))))))))))

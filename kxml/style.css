@@ -8,8 +8,8 @@
 .main th{
     /* width:25%; */
     padding:4px;
-    text-align: left;
-    vertical-align: top;
+    text-align: center;
+    vertical-align: center;
     color: #444;
     background-color: #feedf3;
     border-left: 3px double #999;
