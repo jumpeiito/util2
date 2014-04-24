@@ -40,16 +40,19 @@ td.hp
 
 td.sign
 {
-    width: 30px;
+    font-size: 24pt;
+    width: 60px;
     text-align: center;
 }
 td.interrupt
 {
-    width: 30px;
+    font-size: 24pt;
+    width: 60px;
     text-align: center;
 }
 td.upload
 {
-    width: 30px;
+    font-size: 24pt;
+    width: 60px;
     text-align: center;
 }
