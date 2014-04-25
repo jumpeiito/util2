@@ -347,7 +347,7 @@ orのstring-null版。
 
 (defun make-html ()
   (let ((hash (kensin::r165-hash)))
-    (call-with-output-file2 "f:/util2/hsido/index.html"
+    (call-with-output-file2 ksetting::*hsido-html-file*
       (lambda (op)
 	(cl-who:with-html-output (op)
 	  (:html :lang "ja"
@@ -375,5 +375,9 @@ orのstring-null版。
 		      :do (cl-who:str (html-line p hash op)))))))))))
 
 (defun make-csv ()
-  (hfk::make-csv (mapcar #'jnumber->
-			 (all-people (mainhash)))))
+  (let ((ie "c:/Program Files/Internet Explorer/iexplore.exe"))
+    (hfk::make-csv (mapcar #'jnumber->
+			   (all-people (mainhash))))
+    (if (cl-fad:file-exists-p ie)
+	(sb-ext:run-program ie `(,ksetting::*hsido-html-file*)
+			    :wait nil))))

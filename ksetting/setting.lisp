@@ -109,6 +109,7 @@
 (defvar *hsido-directory*	(cl-fad:pathname-as-directory
 				 (merge-pathnames *main-zip-directory* "HSIDO")))
 (defvar *hsido-output-file*	(server-file ".hsido"))
+(defvar *hsido-html-file*	"f:/util2/hsido/index.html")
 
 ;; (symbol-bounding)
 ;; (symbol-list-bounding)
