@@ -372,12 +372,12 @@ orのstring-null版。
 		    (:th (cl-who:str "URL")))
 		   (loop
 		      :for p :in (all-people (mainhash))
-		      :do (cl-who:str (html-line p hash op)))))))))))
+		      :do (cl-who:str (html-line p hash op)))))))))
+    (let ((ie "c:/Program Files/Internet Explorer/iexplore.exe"))
+      (if (cl-fad:file-exists-p ie)
+	  (sb-ext:run-program ie `(,ksetting::*hsido-html-file*)
+			      :wait nil)))))
 
 (defun make-csv ()
-  (let ((ie "c:/Program Files/Internet Explorer/iexplore.exe"))
     (hfk::make-csv (mapcar #'jnumber->
-			   (all-people (mainhash))))
-    (if (cl-fad:file-exists-p ie)
-	(sb-ext:run-program ie `(,ksetting::*hsido-html-file*)
-			    :wait nil))))
+			   (all-people (mainhash)))))
