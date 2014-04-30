@@ -12,7 +12,6 @@
       (cl-fad:file-exists-p "y:/47伊東/util2/dock.csv")))
 
 (defparameter hospital-hash
-  ;(the hash-table
   (push-hash-table
      #'car #'cdr
      '(("2610903946" . "城南診療所")
@@ -75,7 +74,6 @@
        ("2613344"    . "洛北診療所"))))
 
 (defparameter hospital-short-hash
-  ;(the hash-table
   (push-hash-table
      #'car #'cdr
      '(("2610903946" . "城南")

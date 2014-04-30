@@ -117,12 +117,6 @@
 (defun remove-lines (csvdata)
   (iter (for line :in csvdata)
   	(for row :upfrom 2)
-  	;; (optima:match line
-  	;;   ((LIST* _ _ type _)
-  	;;    (if (or (string= type "原審")
-  	;; 	   (string= type "再審査返戻")
-  	;; 	   (string= type "差戻"))
-  	;;        (collect row))))
 	(match line
 	  ((or (LIST* _ _ "原審" _)
 	       (LIST* _ _ "再審査返戻" _)

@@ -3,16 +3,6 @@
 (defparameter 172file ksetting::*fkca172*)
 (defparameter 167file ksetting::*fkac167*)
 
-;; (9 . "受診券整理番号") (10 . "健診実施年月日") (11 . "健診機関コード")
-;; (48 . "メタボリックシンドローム判定") (49 . "保健指導レベル")
-;; (defparameter r167-alist
-;;   '((:jnum	. "受診券整理番号")
-;;     (:date	. "健診実施年月日")
-;;     (:code	. "健診機関コード")
-;;     (:mlv	. "メタボリックシンドローム判定")
-;;     (:hlv	. "保健指導レベル")
-;;     ))
-
 (defun create-r167 (line)
   (make-r167 :jnum (nth 9 line)
 	     :date (nth 10 line)
@@ -39,18 +29,6 @@
 	 (with-slots (jnum) obj
 	   (setf (gethash jnum hash) obj)))))
     hash))
-
-;; (defun data ()
-;;   (let ((hash (cl-store:restore ksetting::*zenken-hash*)))
-;;     (csv-read-filter-map
-;;      file
-;;      (lambda (line)
-;;        (handler-case (create-172data line hash)
-;; 	 (sb-int:simple-program-error (e)
-;; 	   (declare (ignorable e))
-;; 	   (print line))))
-;;      (lambda (x) (typep x '172data))
-;;      :code :SJIS)))
 
 (defun data-iterate (func)
   (let ((zhash (cl-store:restore ksetting::*zenken-hash*))
@@ -154,71 +132,3 @@
 	      (sex-year-classify-hash v))
 	(finally (return hash))))
 
-;; (defun sex-year-hash (list)
-;;   (group-by-length-hash list
-;; 			(lambda (d)
-;; 			  (list (floor (/ (get-year d) 10))
-;; 				(172data-性別 d)))))
-
-;; (defun make-sex-year-list (hash sex)
-;;   (mapcar (lambda (sym) (gethash sym hash))
-;; 	  (combinate '(4 5 6 7) (list sex))))
-
-;; (defun sex-year (list)
-;;   (let* ((hash (sex-year-hash list)))
-;;     (list (make-sex-year-list hash "1")
-;; 	  (make-sex-year-list hash "2"))))
-
-;; (defun hk-year-hash (list)
-;;   (group-by-length-hash list
-;; 			(lambda (d)
-;; 			  (list (floor (/ (get-year d) 10))
-;; 				(if (ppcre:scan ".+1$" (172data-受診券整理番号 d))
-;; 				    t nil)))))
-
-;; (defun make-hk-year-list (hash h?)
-;;   (mapcar (lambda (sym) (gethash sym hash))
-;; 	  (combinate '(4 5 6 7) (list h?))))
-
-;; (defun hk-year (list)
-;;   (let* ((hash (hk-year-hash list)))
-;;     (list (make-hk-year-list hash t)
-;; 	  (make-hk-year-list hash nil))))
-
-;; (defun list-sum (2dl)
-;;   (reduce (lambda (x y) (mapcar #'+ x y))
-;; 	  (cdr 2dl)
-;; 	  :initial-value (car 2dl)))
-
-;; (defun sex-hk-year (list)
-;;   (let ((hklist (hk-year list)))
-;;     `(,(list-sum hklist)
-;;        ,@hklist
-;;        ,@(sex-year list))))
-
-;; (defun make-alist (file function sym)
-;;   (mapcar (lambda (l) (cons (funcall function l) sym))
-;; 	  (csv-read-to-list file)))
-
-;; (defun dock-alist ()
-;;   (make-alist ksetting::*dock-output-file*
-;; 	      #'sixth
-;; 	      :dock))
-
-;; (defun sc-alist ()
-;;   (make-alist ksetting::*sc-output-file*
-;; 	      #'car
-;; 	      :sc))
-
-;; (defun outer-hash ()
-;;   (alexandria:alist-hash-table
-;;    (append (dock-alist)
-;; 	   (sc-alist))
-;;    :test #'equal))
-
-;; (iter (with hash = (mainhash))
-;;       ;; (for (k v) :in-hashtable (mainhash))
-;;       ;; (print (sex-year v))
-;;       (for (i . j) :in kensin::long-shibu-alist)
-;;       (unless (string= i "85")
-;; 	(print (sex-year (gethash i hash)))))

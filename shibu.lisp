@@ -1,9 +1,3 @@
-;; (eval-when (:compile-toplevel :load-toplevel :execute)
-;;   (require :alexandria)
-;;   (load-lib "iterate")
-;;   (load-lib "util")
-;;   (load-lib "string")
-;;   (load-with-os "test.fasl"))
 (in-package :kensin)
 
 (defvar short-shibu-alist
