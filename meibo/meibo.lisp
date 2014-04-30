@@ -178,11 +178,8 @@
 
 (defmacro judge-format (date format &rest args)
   `(format nil ,(format nil "~~A-~A" format)
-	   ;; (regex-replace-all "/" (regular-date ,date) "")
 	   (regular-date ,date)
 	   ,@args))
-
-;; (judge-format date "~A-支部健診" (svref it 1))
 
 ;; 2012年度以前
 ;; (1) 年度・医療機関コード -> ドック判定
@@ -828,8 +825,6 @@ pred: カウンタ 要素の2引数をとる関数"
 			    :RowHeight)
 		16)
 	  (hitdata-coloring sh shibu)
-	  ;; (if address-out-area-colored
-	  ;;     (address-color sh shibu))
 	  (page-setup sh
 	  	      :PrintArea	(format nil "A1:N~A" lr)
 	  	      :Orientation	2
@@ -915,13 +910,6 @@ pred: カウンタ 要素の2引数をとる関数"
   (append (extract-number)
 	  (extract-number-from-dock)
 	  (extract-number-from-sc)))
-
-;; (defun make-exception-csv ()
-;;   (call-with-output-file2 "20131216 乙訓除外.csv"
-;;     (lambda (op)
-;;       (iter (for line :in (extract-append))
-;; 	    (format op "~A~%" line)))
-;;     :code :SJIS))
 
 (defun extract-hash ()
   (iter (with hash = (make-hash-table :test #'equal))
@@ -1054,17 +1042,12 @@ pred: カウンタ 要素の2引数をとる関数"
        (x (format nil "~A:~A" x x))))
    (secondary-removable-rows 2dl)))
 
-;; (defun 2dl-with-row-number (2dl &key (start 1))
-;;   (mapcar-with-index #'cons 2dl :start start))
-
-;; f:/util2/meibo/product/sample.xlsx
 (defun secondary (pathname)
   (with-excel (app :visible t :quit nil)
     (with-excel-book (app book pathname :close nil)
       (let* ((sh   (ole book :WorkSheets :Item 1))
 	     (data (secondary-data sh)))
 	(iter (for rows :in (reverse (secondary-removable-rows-string data)))
-	      ;; (ole sh :range rows :select)
 	      (ole sh :range rows :delete))
 	(ole sh :cells 1 1 :select)))))
 
@@ -1079,7 +1062,6 @@ pred: カウンタ 要素の2引数をとる関数"
 	 ((LIST* "受診券整理番号" _) :ignore)
 	 ((LIST* "0" _) :ignore)
 	 (_
-	  ;; (print (gethash (car line) hash))
 	  (let ((z (gethash (car line) hash)))
 	    (if (and (zenken::zenken-発行日 z)
 		     (not (zenken::zenken-受診日 z)))
@@ -1093,7 +1075,6 @@ pred: カウンタ 要素の2引数をとる関数"
      (lambda (line)
        (optima:match line
 	 ((LIST* "受診券整理番号" _) :ignore)
-	 ;; ((LIST* "0" _) :ignore)
 	 (_
 	  (let ((z (gethash (car line) hash)))
 	    (if (and (zenken::zenken-発行日 z)

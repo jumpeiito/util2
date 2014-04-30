@@ -3,14 +3,6 @@
   (require :kensin)
   (require :bordeaux-threads))
 
-;; (save-lisp-and-die "server.exe" :executable t :toplevel 'main)
-;; (defun server-start (&rest args)
-;;   (declare (ignorable args))
-;;   (kserv::start))
-
-;; (defun server-stop (&rest args)
-;;   (declare (ignorable args))
-;;   (kserv::stop))
 
 (defun main ()
   (kserv::start)

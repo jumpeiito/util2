@@ -18,7 +18,6 @@
 (defun has-continual? (xmlname) (has-predicate xmlname "90040"))
 (defun has-internal?  (xmlname) (has-predicate xmlname "90050"))
 (defun has-final?     (xmlname) (has-predicate xmlname "90060"))
-;; "f:/zip/MAIN/HSIDO/xml/g26103074112013120612000005.xml"
 (defun get-interrupted-value (xmlname)
   (kxml:xpath #'xpath:string-value
 	      (xml-contents xmlname)

@@ -21,16 +21,7 @@
    (name     (stp:attribute-value stp "name"))
    (parent   (stp:parent stp))
    (pathname (stp:attribute-value parent "pathname"))
-   (data172  (car (gethash number hash))))
-  ;; (:check172 (hash) (aif (gethash number hash)
-  ;; 			 (progn
-  ;; 			   (setf data172 (car it))
-  ;; 			   (if (or (not (172data-健診メッセージ (car it)))
-  ;; 				   (string-not-null (172data-健診メッセージ (car it))))
-  ;; 			       (values nil (car it))
-  ;; 			       (values t (car it))))
-  ;; 			 nil))
-  )
+   (data172  (car (gethash number hash)))))
 
 (defun dname-collect ()
   (iter (with hash = (kensin::172-hash))

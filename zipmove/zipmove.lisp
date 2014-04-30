@@ -150,16 +150,6 @@
 		(rename-file zip (path+ newdir zip))))))
   (util::stdout "~Aを整理しました。~%" directory))
 
-;; (defun move ()
-;;   (directory-compare #P"y:/23吉田/未処理/" #P"d:/zip/" :type :rename)
-;;   (directory-compare #P"g:/" #P"d:/zip/")
-;;   (directory-compare #P"d:/zip/" #P"f:/zip/")
-;;   (directory-compare #P"f:/zip/" #P"d:/zip/")
-;;   (directory-classify #P"d:/zip/")
-;;   (main-build #P"d:/zip/MAIN/")
-;;   (directory-classify #P"f:/zip/")
-;;   (main-build #P"f:/zip/MAIN/"))
-
 (defmacro when-file-exist (&rest files)
   `(and ,@(mapcar (lambda (f) `(file-exists-p ,f)) files)))
 
@@ -182,24 +172,5 @@
 	 (lambda ()
 	   (directory-classify #P"f:/zip/")
 	   (main-build #P"f:/zip/MAIN/"))))))
-
-;; Evaluation took:
-;;   38.135 seconds of real time
-;;   11.809275 seconds of total run time (2.340015 user, 9.469260 system)
-;;   [ Run times consist of 0.126 seconds GC time, and 11.684 seconds non-GC time. ]
-;;   30.97% CPU
-;;   118,019,024,091 processor cycles
-;;   198,286,840 bytes consed
-
-
-;; (for-each
-;;  (lambda (b)
-;;    (let1 sym (car (zip-info b))
-;;      (if (eq sym :kensin)
-;; 	 (rename-file b
-;; 		      (merge-pathnames #P"d:/zip/MAIN/"
-;; 				       b)))))
-;;  (directory-list "d:/zip/MAIN/HSIDO/" :type "zip"))
-
 (in-package :cl-user)
 

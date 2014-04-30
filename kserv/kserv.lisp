@@ -1,14 +1,6 @@
 (in-package :kserv)
 
-;; (defparameter topdir #P"y:/23吉田/未処理/")
-;; (defparameter targetfile #P"y:/23吉田/未処理/解析対象.txt")
-;; (defvar *dock-output-file* "f:/util2/kserv/.dock")
-;; (defvar *setting-file* "f:/util2/kserv/setting.lisp")
-;; (defvar *mtime-file* "f:/util2/kserv/mtime.lisp")
-
 (defun server-collect ()
-  ;; (util:allf ksetting::*topdir*
-  ;; 	     :type "zip" :regexp "^\\d{10}_00263129_\\d{9}_[0-9]$")
   (unless (file-exists-p ksetting::*topdir*)
     (error "kserv::server-collect-error"))
   (util:directory-list ksetting::*topdir*
@@ -189,19 +181,6 @@
 		     (format t "ドック支払ファイルを解析しました。~%")
 		     (return pot))))))
 
-;; (defun multi-thread-dock-reader ()
-;;   (format t "ドック支払ファイルを解析します。~%")
-;;   (iter (for file :in (dock-file))
-;; 	(collect (sb-thread:make-thread
-;; 		  (lambda ()
-;; 		    (print file)
-;; 		    (with-excel (app :visible nil :quit t)
-;; 		      (dock-reader-book app file))))
-;; 	  :into pot)
-;; 	(finally (prog1
-;; 		     (return (mapcan #'sb-thread:join-thread pot))
-;; 		   (format t "ドック支払ファイルを解析しました。~%")))))
-
 (defun parse-dock-reader (rd)
   (mapcar (lambda (line)
 	    (format nil "~{~A~^,~}~%"
@@ -229,7 +208,6 @@
   (util::stdout "zip解析ファイルを作ります。~%")
   (call-with-output-file2 "y:/47伊東/zip-parse.csv"
     (lambda (op)
-      ;; (iter (for line :in (dock::parse))
       (iter (for line :in (dock::%parse 10))
 	    (format op "~{~A~^,~}~%" line)))
     :code :SJIS)

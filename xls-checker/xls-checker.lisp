@@ -33,9 +33,6 @@
 
 (defgeneric create (obj line))
 (defmethod create ((obj Code) (line LIST))
-  ;; (optima:match line
-  ;;   0 1 2 3 4 6 7 8 19 23 24
-  ;;   ((LIST* c m n1 n2 ty _ f xty u _ _ _ _ _ _ _ _ _ _ ex _ _ _ mi ma _)
   (setf (code-> obj)		(nth 0 line)
 	(must-> obj)		(nth 1 line)
 	(name1-> obj)		(nth 2 line)
@@ -81,8 +78,7 @@
     	  (finally (return hash)))))
 
 (in-package #:check) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; (defparameter fcolor excel::xlpink)
-;; (defparameter rcolor excel::xlskyblue)
+
 (defparameter hospital-alist
   '(("2610903946" . "城　南")
     ("2610803013" . "東　山")
@@ -341,7 +337,6 @@
   (force-output)
   (iter (for (line) :in (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3))))
 	(for row :upfrom 6)
-	;; (declare (type fixnum row))
 	(cond
 	  ;; 正常なもの
 	  ((scan "([^ 　]+)　([^ 　]+)" line)
@@ -721,7 +716,6 @@
 
 (format t "check-string")
 (defun %check-string (sheet col contents)
-  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (for cell :in contents)
 	(for row :upfrom 6)
 	(declare (type fixnum row col))
@@ -780,9 +774,7 @@
 	    (next-iteration))))
 
 (in-package :check)
-;; f:/20130628/kmove/2013.06.15特定健診データ簡易入力シートVer4.0.0 (1).xls
-;; f:/20130628/kmove/2013.06.29特定健診データ簡易入力シートVer4.0.0 (1).xls
-;; f:/20130628/kmove/2013.6.1特定健診データ簡易入力シートVer4.0.0 (1).xls
+
 (defun %core (excel-application filename &key (close nil))
   (declare (optimize (debug 3) (safety 3) (speed 0)))
   (let ((f (namestring filename)))
@@ -826,5 +818,3 @@
   (mapc
    (lambda (file) (%core app file :close t))
    (directory-list directory :type "xls"))))
-
-;; y:/23吉田/未処理/20140106 吉祥院病院(南)/20131017簡易入力シート(Hba1c改定対応) .xls

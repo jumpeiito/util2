@@ -240,7 +240,6 @@
     :code :SJIS))
 
 (defun error-file (zipfile &key (output-file nil))
-  ;; (let ((hash (kensin::172-hash)))
   (let ((hash (r172c::172-hash)))
     (if (has-error-file? zipfile)
 	(aif (error-file-collect zipfile hash)

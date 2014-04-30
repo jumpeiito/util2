@@ -41,7 +41,6 @@
   `(let1 xmlcontent (xml-content)
      ,@(mapcar
 	(lambda (p) `(defvar ,(first p)
-		       ;; (xpath:string-value (xpath:evaluate ,(second p) xmlcontent))
 		       (xpath:map-node-set->list
 			#'xpath:string-value
 			(xpath:evaluate (format nil "~A/item" ,(second p))
@@ -111,6 +110,4 @@
 (defvar *hsido-output-file*	(server-file ".hsido"))
 (defvar *hsido-html-file*	"f:/util2/hsido/index.html")
 
-;; (symbol-bounding)
-;; (symbol-list-bounding)
 (in-package :cl-user)

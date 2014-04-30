@@ -148,13 +148,6 @@
 	  index))
 
 (defun numbers-to-contents (numbers line)
-  ;; (declare (type list numbers) (type line line)
-  ;; 	   (optimize (speed 3) (safety 0) (debug 0)))
-  ;; (the list
-  ;;      (mapcar
-  ;; 	(lambda (num) (aif (the (or cell nil) (line-search num line))
-  ;; 			   (the string (cell-contents it)) nil))
-  ;; 	(the list numbers)))
   (mapcar (lambda (num) (aif (line-search num line)
 			     (cell-contents it) nil))
 	  numbers))
@@ -169,14 +162,6 @@
 		     0 1))))
 
 (defun relative-error-p (string-pair)
-  ;; (destructuring-bind (opinion boolean) string-pair
-  ;;   (or (string-null boolean)
-  ;; 	(and (string= "1" boolean)
-  ;; 	     (string-null opinion))
-  ;; 	(and (string= "2" boolean)
-  ;; 	     (and (string-not-null opinion)
-  ;; 		  (not (ppcre:scan relative-error-regexp opinion))))))
-  ;; (string boolean)
   (optima:match string-pair
     ((LIST _ nil)	t)
     ((LIST nil "2")     nil)
@@ -225,9 +210,6 @@
 	    errors	(append merr eerr rerr)))
     obj))
 
-;;; #P"f:/kcsv/00263129_FKAC522_20130119_010.csv"
-;;; #P"f:/kcsv2/00263129_FKAC522_20130619_010.csv"
-;;; #P"f:/zip/"
 (defun create-csv (pathname)
   (declare (type pathname pathname) (optimize (speed 0) (safety 3) (debug 3)))
   (let1 obj (make-csv :pathname pathname)
@@ -272,19 +254,6 @@
 
 (define-condition kensin-either-error (kensin-error)
   ())
-
-;; (defparameter testl '((2 3) ("2" "3")))
-;; (iter (for line :in testl)
-;;       (collect (iter (for cell :in line)
-;; 	    (restart-case (collect (/ cell 2))
-;; 	      (store (new-value)
-;; 		:interactive (lambda ()
-;; 			       (format t "new value: ")
-;; 			       (list (read)))
-;; 		(collect (/ new-value 2)))))))
-
-;; (restart-case (error 'kensin-either-error :format-control "hgoe")
-;;   (ignore ))
 
 (define-condition kensin-warning (simple-warning kensin-condition)
   ())
@@ -351,9 +320,7 @@
 			 :col     (sort2 (nth counter etitle) < identity)
 			 :row     (line-row line)
 			 :name    (line-name line)
-			 :title   (svref either-title counter)
-			 ;; (if (member title must-repairable :test #'equal) "2" nil)
-			 )))
+			 :title   (svref either-title counter))))
 
 (defun make-either-error-instance (index counter line)
   (let1 etitle #[index :eerr]
@@ -474,7 +441,6 @@
 		    (setf fix-value "2")
 		    (collect obj)))))))
 
-;; #P"f:/kcsv2/00263129_FKAC522_20130618_020.csv"
 (defun repaired-multiple-values (csv-instance)
   (optima:match csv-instance
     ((csv body index)
@@ -610,7 +576,6 @@
       (repair-xml-output c r m e h)
       (repair-csv-output c))))
 
-;; #P"f:/kcsv2/00263129_FKAC522_20130612_020.csv"
 (defun repair2 (csv)
   (multiple-value-bind (r m e h)
       (repaired-multiple-values csv)
@@ -645,16 +610,6 @@
 	     (apply #'+ merr)
 	     (apply #'+ eerr)
 	     (apply #'+ rerr)
-	     ;; (optima:match (the list (gethash number zhash))
-	     ;;   ((LIST zenken)
-	     ;; 	(optima:match zenken
-	     ;; ((ZENKEN::ZENKEN zenken::途中取得日 zenken::途中喪失日)
-	     ;; 	   (format nil "~A~A"
-	     ;; 		   (aif zenken::途中取得日
-	     ;; 			(concatenate 'string it "(取得)") "")
-	     ;; 		   (aif zenken::途中喪失日
-	     ;; 			(concatenate 'string it "(喪失)") "")))
-	     ;;   (nil ""))
 	     (optima:match (gethash number zhash)
 	       ((ZENKEN::ZENKEN zenken::途中取得日 zenken::途中喪失日)
 		(format nil "~A~A"
@@ -694,7 +649,6 @@
 	      "整理番号" "支部" "番号" "氏名" "生年月日"
 	      "必須" "選択" "相関" "取得・喪失"))
     (iter (with zhash = (cl-store:restore ksetting::*zenken-hash*))
-      	  ;; (with hash  = (kensin::172-hash))
 	  (with hash  = (r172c::172-hash))
 	  (for file :in (directory-list-csv directory-string))
 	  (out (create-csv file) zhash hash o))))
@@ -748,14 +702,6 @@
       ((year (string 2)) _)
       (the simple-string (& write-to-string truncate jnum))
     (nendo-end (+ 2000 (read-from-string year)))))
-
-;; Evaluation took:
-;;   24.366 seconds of real time
-;;   5.179233 seconds of total run time (3.900025 user, 1.279208 system)
-;;   [ Run times consist of 0.093 seconds GC time, and 5.087 seconds non-GC time. ]
-;;   21.26% CPU
-;;   75,388,767,075 processor cycles
-;;   83,579,488 bytes consed
 
 (defun csv-color-classify (v)
   (iter (for line :in v)

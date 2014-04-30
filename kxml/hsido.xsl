@@ -2,14 +2,12 @@
 <?xml-stylesheet type="text/xml"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
 		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:h="urn:hl7-org:v3" xsi:schemaLocation="urn:hl7-org:v3 ../XSD/hg08_V08.xsd">
-  <!-- <xsl:output method="html" encoding="UTF-8"/> -->
   <xsl:template match="/">
     <html>
       <head>
 	<link rel="stylesheet" href="style.css" type="text/css" />
       </head>
       <body>
-	<!-- <xsl:apply-templates select="//h:patientRole/h:patient"/> -->
 	<table class="main">
 	  <tr><th>氏名</th><td><xsl:value-of select="//h:patientRole//h:patient/h:name" /></td></tr>
 	  <tr><th>記号</th><td><xsl:value-of select="//h:patientRole//h:id[@root='1.2.392.200119.6.204']/@extension" /></td></tr>

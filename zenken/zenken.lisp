@@ -8,22 +8,6 @@
 (defparameter %directory '(#P"d:/特定健診システム/特定健診CSV/"
 		     #P"f:/20130628/"))
 
-;; (defparameter za
-;;   (remove-if
-;;    (lambda (obj)
-;;      (with-slots (年度末年齢 整理番号 途中取得日 途中喪失日) obj
-;;        (or (<= (read-from-string 年度末年齢) 39)
-;; 	   (>= (read-from-string 年度末年齢) 75)
-;; 	   (equal "00000000000" 整理番号)
-;; 	   途中取得日
-;; 	   途中喪失日
-;; 	   (not (ppcre:scan "^12" 整理番号)))
-;;        ))
-;;    (to-data %file)))
-
-;; (iter (for z :in za)
-;;       (phash z :condition t :key #'zenken::zenken-個人番号))
-
 (defparameter years '(2008 2009 2010 2011 (2012 . "特定健診全件データ.csv") 2013))
 
 (defmacro select (name)
@@ -47,9 +31,6 @@
   年度末支部 名 保険証番号 行 氏名 本人／家族 性別 生年月日 年度末年齢 途中取得日 途中喪失日
   除外 整理番号 発行日 受診日 受診区分 健診機関 取込方法 保健指導 指導日 支援 証支部 個人番号 組合番号
   支部 分会 班 表示順 上名 下名 分会名 現支部 健診機関コード)
-
-;; (defun chomp (str)
-;;   (cl-ppcre:regex-replace-all "[　 ]+$" str ""))
 
 (defun chomp (str)
   (labels ((in (subs)
@@ -83,8 +64,9 @@
 
 (defun create-zenken (list bhash)
   (declare (type list list) (type hash-table bhash)
-	   ;; (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0))
-	   (optimize (speed 0) (safety 3) (debug 3) (compilation-speed 0) (space 0)))
+	   (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0))
+	   ;; (optimize (speed 0) (safety 3) (debug 3) (compilation-speed 0) (space 0))
+	   )
   (let1 obj (apply #'zenken-gen list)
     (with-zenken-slot obj
       (setq 氏名	(chomp 氏名)
@@ -114,23 +96,15 @@
 
 (defun target? (obj)
   (declare (type zenken obj)
-	   ;; (optimize (speed 3) (safety 0) (debug 0))
-	   (optimize (speed 0) (safety 3) (debug 3)))
+	   (optimize (speed 3) (safety 0) (debug 0))
+	   ;; (optimize (speed 0) (safety 3) (debug 3))
+	   )
   (optima:match obj
     ((zenken 年度末年齢 途中取得日 途中喪失日 除外)
      (let1 year (the integer (read-from-string 年度末年齢))
        (and (>= year 40) (< year 75)
 	    (not 途中取得日) (not 途中喪失日)
 	    (equal "0" 除外))))))
-
-;; (defun to-data (filename)
-;;   (iter (with bhash = (kensin:bunkai-hash))
-;; 	(for line :in (csv-read-to-list filename :code :SJIS))
-;; 	(unless (first-time-p)
-;; 	  (handler-case (collect (create-zenken line bhash))
-;; 	    (sb-int:simple-program-error (e)
-;; 	      (declare (ignorable e))
-;; 	      (next-iteration))))))
 
 (defun to-data (filename)
   (let ((bhash (kensin:bunkai-hash)))
@@ -266,18 +240,6 @@
      (lambda (z) (setf (gethash (zenken-個人番号 z) hash) z))
      :file %file)
     hash))
-
-;; "f:/20130628/特定健診全件データ.csv"
-
-;; (defun complex-hash (filename)
-;;   (iter (for line :in (to-data filename))
-;; 	(phash line
-;; 	       :condition t
-;; 	       :key   (lambda (o) (with-zenken-slot o (list 氏名 生年月日)))
-;; 	       :value (lambda (o)
-;; 			(with-zenken-slot o
-;; 			  (list 保険証番号 生年月日 氏名 途中取得日 途中喪失日
-;; 				受診日 健診機関 支部 分会 班 分会名 現支部))))))
 
 (defun complex-hash2 (filename)
   (iter (for line :in (to-data filename))

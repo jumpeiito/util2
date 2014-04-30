@@ -15,7 +15,6 @@
 		  "~{~A~^,~}~%"
 		  (list 健診機関 受診日 年度 支払日 保険番号 整理番号 氏名 生年月日)))))
 
-;; (defparameter namelist (namelist))
 (defun alert (&key (file nil))
   (iter (for name :in (namelist))
 	(for old = (how-old (dock-生年月日 name)

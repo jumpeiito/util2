@@ -40,15 +40,4 @@
 			  (lambda (key) (gethash key hash 0))
 			  data))))))
 
-;; (defun counter (symbol)
-;;   (funcall (case symbol
-;; 	     (:identity		#'identity)
-;; 	     (:shibu		#'counter-shibu)
-;; 	     (:hospital		#'counter-hospital)
-;; 	     (:hsido		#'hsido-lv)
-;; 	     (t			#'identity))
-;; 	   (count-initial)))
-
-
-
 (in-package :cl-user)

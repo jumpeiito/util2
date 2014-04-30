@@ -4,7 +4,6 @@
 		  (merge-pathnames ksetting::*hsido-directory*
 				   "xml")))
 
-;; f:/zip/MAIN/HSIDO/xml/g26109039462013100702000001.xml
 (defun xml-contents (xmlname)
   (cxml:parse-file xmlname (stp:make-builder)))
 

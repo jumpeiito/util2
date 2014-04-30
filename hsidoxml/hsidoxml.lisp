@@ -1,8 +1,5 @@
 (in-package :hx)
 
-;; #P"f:/20130628/hsido/2610307411_00263129_201205100_2.zip"
-;; #P"f:/20130628/hsido/2610307411_00263129_201304220_2.zip"
-;; #P"f:/20130628/hsido/2610903946_00263129_201302180_2.zip"
 (defgeneric common-section		(x))
 (defgeneric supported-level		(x))
 (defgeneric changing-stage		(x))
@@ -28,9 +25,6 @@
 (defgeneric xml-stored-p		(x))
 (defgeneric index-string		(x op))
 (defgeneric xls-string		(x op))
-;; (defgeneric first-time-style	(x))
-;; (defgeneric first-time-style		(x))
-;; (defgeneric supported-level		(x))
 
 (kxml::def-xml-parser-method supported-level
     :slevel "<cs>" "code[@code='90010']/.." "entry" "act" "entryRelationship"
@@ -183,7 +177,6 @@
 (defmethod internal ((x XML-PARSER))
   (base-to-clojure-list (internal-base x)))
 
-;; "2610903946_00263129_201310070_2"
 (defmethod final-assess ((x XML-PARSER)))
 
 (defvar xml-directory #P"f:/zip/MAIN/HSIDO/xml/")
@@ -285,22 +278,6 @@
   (for-each
    (lambda (z) (kxml::map-with-kxml #'xml-store z))
    (allf #P"f:/zip/MAIN/HSIDO/" :type "zip")))
-
-;; (mapcar
-;;  #'final
-;;  (directory-list #P"f:/zip/MAIN/HSIDO/" :type "zip"))
-
-;; (defparameter x
-;;   (find-if
-;;    (lambda (xp)
-;;      (ppcre:scan "03.xml" (kxml::path-of xp)))
-;;    (map-with-kxml
-;;     #'identity
-;;     #P"f:/zip/MAIN/HSIDO/2610903946_00263129_201308300_2.zip"
-;;     )))
-
-;; (defun extract-xml (zipfile)
-;;   )
 
 (in-package :cl-user)
 

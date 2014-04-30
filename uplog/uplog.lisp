@@ -24,11 +24,7 @@
 			 (collect (list directory (pathname-name file) (pathname-type file)))))))
 
 (defun uplog-output ()
-  (iter ;; (for directory :in (sort2 (uplog-initial) > pathname-date))
-	;; (iter (for file :in-allf directory)
-	;;       (format *standard-output* "~{~A,~A.~A~}~%"
-	;; 	      (list directory (pathname-name file) (pathname-type file))))
-	(for (dir name type) :in (uplog-main))
+  (iter (for (dir name type) :in (uplog-main))
 	(format *standard-output* "~A,~A.~A~%" dir name type)))
 
 (defun uplog-search (search-keyword)

@@ -1,12 +1,10 @@
 .main{
-    /* width: 100%; */
     border-collapse: separate;
     border-spacing: 0px;
     border-top: 1px solid #ccc;
     border-left: 1px solid #ccc;
 }
 .main th{
-    /* width:25%; */
     padding:4px;
     text-align: left;
     vertical-align: center;
@@ -18,14 +16,12 @@
     border-bottom: 1px solid #ccc;
 }
 .main td{
-    /* width:75%; */
     padding:4px;
     background-color: #fafafa;
     border-right: 1px solid #ccc;
     border-bottom: 1px solid #ccc;
 }
 .main th.first{
-    /* width:75%; */
     text-align: left;
     padding:4px;
     background-color: peachpuff;
@@ -33,7 +29,6 @@
     border-bottom: 1px solid #ccc;
 }
 .main th.plan{
-    /* width:75%; */
     text-align: left;
     padding:4px;
     background-color: burlywood;
@@ -41,7 +36,6 @@
     border-bottom: 1px solid #ccc;
 }
 .main th.result{
-    /* width:75%; */
     text-align: left;
     padding:4px;
     background-color: bisque;
@@ -49,7 +43,6 @@
     border-bottom: 1px solid #ccc;
 }
 .main th.inter{
-    /* width:75%; */
     text-align: left;
     padding:4px;
     background-color: khaki;
@@ -57,7 +50,6 @@
     border-bottom: 1px solid #ccc;
 }
 .main th.final{
-    /* width:75%; */
     text-align: left;
     padding:4px;
     background-color: wheat;
@@ -67,7 +59,6 @@
 
 .continual
 {
-    /* width:100%; */
     border-collapse: separate;
     border-spacing: 0px;
     border-top: 1px solid #ccc;
