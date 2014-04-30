@@ -247,7 +247,7 @@
       (loop for i = (read ip nil nil nil)
 	 while i
 	 collect i))
-    :code :SJIS))
+    :code (file-coding pathname)))
 
 (defun unregistry (&rest args)
   (declare (ignorable args))

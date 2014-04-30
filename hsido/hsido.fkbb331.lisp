@@ -12,7 +12,7 @@
 
 (defun info ()
   (iter (with header = nil)
-	(for line :in (csv-read-to-list file :code :SJIS))
+	(for line :in (csv-read-to-list file :code (file-coding file)))
 	(optima:match line
 	  ((LIST* _ "FKBB331" _) (setf header line))
 	  ((LIST _) (next-iteration))
@@ -39,4 +39,4 @@
 	  (format op "~{~A~^,~}~%" header)
 	  (format op "~{~{~A~^,~}~%~}" body)
 	  (format op "~A" (length body)))
-	:code :SJIS))))
+	:code :UTF8))))

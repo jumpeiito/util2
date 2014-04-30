@@ -231,7 +231,7 @@
 (defun create-csv (pathname)
   (declare (type pathname pathname) (optimize (speed 0) (safety 3) (debug 3)))
   (let1 obj (make-csv :pathname pathname)
-    (let1 init (util:csv-read-to-list pathname :code :SJIS)
+    (let1 init (util:csv-read-to-list pathname :code (file-coding pathname))
       (with-csv-slots obj
 	(setq hcode	(cells init 2 2)
 	      hname	(car (gethash hcode kensin:hospital-hash))

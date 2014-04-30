@@ -85,9 +85,13 @@
 ;; 		 (get-csv-jusinken 28 12)))
 
 (defun entry-to-contents (entry)
-  (sb-ext:octets-to-string
-   (zip:zipfile-entry-contents entry)
-   :external-format :SJIS))
+  (with-decoding-error
+      ((sb-ext:octets-to-string
+       (zip:zipfile-entry-contents entry)
+       :external-format :SJIS))
+    ((sb-ext:octets-to-string
+       (zip:zipfile-entry-contents entry)
+       :external-format :UTF8))))
 
 ;; (defun get-contents (zip-instance regexp)
 ;;   (iter (for (name entry) :in-hashtable (zip:zipfile-entries zip-instance))

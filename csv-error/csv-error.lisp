@@ -28,9 +28,13 @@
 
 (defun error-file-contents (entry)
   (%purify
-   (sb-ext:octets-to-string
-    (zip:zipfile-entry-contents entry)
-    :external-format :SJIS)))
+   (with-decoding-error
+       ((sb-ext:octets-to-string
+	(zip:zipfile-entry-contents entry)
+	:external-format :SJIS))
+     ((sb-ext:octets-to-string
+	(zip:zipfile-entry-contents entry)
+	:external-format :UTF8)))))
 
 (defmacro with-string-to-csv ((filename entry constructor) &rest body)
   `(let ((string (error-file-contents ,entry)))

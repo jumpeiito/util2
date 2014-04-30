@@ -29,7 +29,7 @@
        ((LIST* _ "FKAC167" _) nil)
        ((LIST* "保険者番号" _) nil)
        (_ (funcall func line))))
-   :code :SJIS))
+   :code (file-coding 167file)))
 
 (defun 167file-hash ()
   (let ((hash (make-hash-table :test #'equal)))
@@ -62,7 +62,7 @@
 	 ((LIST _)	      :ignore)
 	 ((LIST* _ "FKCA172" _) :ignore)
 	 (_ (funcall func (create-172data line zhash 167hash)))))
-     :code :SJIS)))
+     :code (file-coding 172file))))
 
 (defun 172-hash ()
   (let ((hash (make-hash-table :test #'equal)))
