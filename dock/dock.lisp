@@ -29,7 +29,7 @@
        ,instance
      ,@body))
 
-(defparameter seekfile "y:/47伊東/zip-parse.csv")
+(defparameter seekfile ksetting::*zip-parse-file*)
 
 (defun seek-birthday-hash (file)
   (iter (for line :in-csv file :code :SJIS)
@@ -140,9 +140,7 @@
 		  (util::how-old 生年月日 (nendo-end (read-from-string ks::year)))
 		  (if 連合会 "○" "×")
 		  (if ファイル "○" "×")
-		  (if ファイル (car ファイル) "")
-		  ;; (if ファイル (gethash ファイル uplog-hash "") "")
-		  ))))
+		  (if ファイル (car ファイル) "")))))
 
 (defun %collection ()
   (iter (for dir :in (search-path))
@@ -275,8 +273,10 @@
   (dock-脳単独 d))
 
 (defun kensin-year? (d)
-  (and (dock-年度 d)
-       (>= (dock-年度 d) ksetting::*year*)))
+  (or (and (dock-予約年度 d)
+	   (= (dock-予約年度 d) ksetting::*year*))
+      (and (dock-年度 d)
+	   (= (dock-年度 d) ksetting::*year*))))
 
 (defun kensin-year=? (d)
   (and (dock-年度 d)
@@ -400,6 +400,14 @@
 	    (format op "~A~%" (tostring line))))
     :code :SJIS))
 
+(defun tocsv-all ()
+  (call-with-output-file2 ksetting::*dock-init-file2*
+    (lambda (op)
+      (write-line title op)
+      (iter (for line :in (collection #'identity))
+	    (format op "~A~%" (tostring line))))
+    :code :SJIS))
+
 (defun %condition (val)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (for line :in val)
@@ -408,21 +416,21 @@
 	(optima:match line
 	  ((LIST* "健診機関" _)
 	   (next-iteration))
-	  ((LIST* _ _ _ _ nil _)
-	   (collect row :into bl2))
+	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ get lost _)
+	   (if (or get lost)
+	       (collect row :into bl2)
+	       (optima:fail)))
 	  ((LIST* _ _ _ _ _ "脳単独" _)
+	   (collect row :into bl2))
+	  ((LIST* _ _ _ _ _ _ _ _ _ _ "×" "○" _)
+	   (collect row :into yellow))
+	  ((LIST* _ _ _ _ nil _)
 	   (collect row :into bl2))
 	  ((LIST* _ _ _ nendo _ _ _ _ _ birth _)
 	   (if (not (kensin:kensin-year?
 		     (the fixnum (how-old birth (nendo-end (truncate nendo))))))
 	       (collect row :into bl2)
 	       (optima:fail)))
-	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ get lost _)
-	   (if (or get lost)
-	       (collect row :into bl2)
-	       (optima:fail)))
-	  ((LIST* _ _ _ _ _ _ _ _ _ _ "×" "○" _)
-	   (collect row :into yellow))
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ "×" "×" _)
 	   (collect row :into red))
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ "○" _)
