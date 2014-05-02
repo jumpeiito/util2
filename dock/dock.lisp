@@ -424,6 +424,8 @@
 	   (collect row :into bl2))
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ "×" "○" _)
 	   (collect row :into yellow))
+	  ((LIST* _ _ _ _ _ _ _ _ _ _ "○" _)
+	   (collect row :into bl2))
 	  ((LIST* _ _ _ _ nil _)
 	   (collect row :into bl2))
 	  ((LIST* _ _ _ nendo _ _ _ _ _ birth _)
