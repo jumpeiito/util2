@@ -42,7 +42,7 @@
 	    </td>
 	  </tr>
 	  <tr><th>指導コース名</th><td><xsl:value-of select="//h:code[@code='1020000003']/../h:value" /></td></tr>
-
+	  <tr><th class="first">初回面接の実施日付</th><td><xsl:value-of select="//h:code[@codeSystem='1.2.392.200119.6.3003']/../h:effectiveTime/@value" /></td></tr>
 	  <tr>
 	    <th class="first">初回面接の支援形態</th>
 	    <td>
@@ -54,7 +54,13 @@
 	      </xsl:choose>
 	    </td>
 	  </tr>
-	  <tr><th class="first">初回面接の実施日付</th><td><xsl:value-of select="//h:code[@codeSystem='1.2.392.200119.6.3003']/../h:effectiveTime/@value" /></td></tr>
+	  <tr>
+	    <th class="first">初回面接実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1022000013']/..//h:width/@value" />
+	      <xsl:value-of select="//h:code[@code='1022000013']/..//h:width/@unit" />
+	    </td>
+	  </tr>
 	  <tr>
 	    <th class="first">初回面接の実施者</th>
 	    <td>
@@ -65,7 +71,7 @@
 		<xsl:when test="//h:code[@code='90030']/../h:entry//h:code[@codeSystem='1.2.392.200119.6.3020']/@code = 4">(4) その他</xsl:when>
 	      </xsl:choose>
 	    </td>
-	  </tr>	  
+	  </tr>
 	  <tr>
 	    <th class="first">継続的支援予定期間</th>
 	    <td>
@@ -74,17 +80,17 @@
 	    </td>
 	  </tr>
 	  <tr>
-	    <th class="first">目標体重</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1021001032']/../h:value/@value" />
-	      <xsl:value-of select="//h:code[@code='1021001032']/../h:value/@unit" />
-	    </td>
-	  </tr>
-	  <tr>
 	    <th class="first">目標腹囲</th>
 	    <td>
 	      <xsl:value-of select="//h:code[@code='1021001031']/../h:value/@value" />
 	      <xsl:value-of select="//h:code[@code='1021001031']/../h:value/@unit" />
+	    </td>
+	  </tr>
+	  <tr>
+	    <th class="first">目標体重</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1021001032']/../h:value/@value" />
+	      <xsl:value-of select="//h:code[@code='1021001032']/../h:value/@unit" />
 	    </td>
 	  </tr>
 	  <tr>
@@ -118,14 +124,6 @@
 	      <xsl:value-of select="//h:code[@code='1041101113']/../h:value/@unit"/>
 	    </td>
 	  </tr>
-	  <tr><th class="plan">計画上の個別支援B回数</th><td><xsl:value-of select="//h:code[@code='1041201117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="plan">計画上の個別支援B合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1041201113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1041201113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
 	  <tr><th class="plan">計画上のグループ支援回数</th><td><xsl:value-of select="//h:code[@code='1041302117']/../h:value/@value"/>回</td></tr>
 	  <tr>
 	    <th class="plan">計画上のグループ支援合計実施時間</th>
@@ -143,6 +141,15 @@
 	    </td>
 	  </tr>
 	  <tr><th class="plan">計画上のe-mailA支援回数</th><td><xsl:value-of select="//h:code[@code='1041104117']/../h:value/@value"/>回</td></tr>
+	  <tr><th class="plan">計画上の支援Aポイント</th><td><xsl:value-of select="//h:code[@code='1041100114']/../h:value/@value" /></td></tr>
+	  <tr><th class="plan">計画上の個別支援B回数</th><td><xsl:value-of select="//h:code[@code='1041201117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="plan">計画上の個別支援B合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1041201113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1041201113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
 	  <tr><th class="plan">計画上の電話B支援回数</th><td><xsl:value-of select="//h:code[@code='1041203117']/../h:value/@value"/>回</td></tr>
 	  <tr>
 	    <th class="plan">計画上の電話B支援合計実施時間</th>
@@ -152,57 +159,9 @@
 	    </td>
 	  </tr>
 	  <tr><th class="plan">計画上のe-mailB支援回数</th><td><xsl:value-of select="//h:code[@code='1041204117']/../h:value/@value"/>回</td></tr>
-	  <tr><th class="plan">計画上の支援Aポイント</th><td><xsl:value-of select="//h:code[@code='1041100114']/../h:value/@value" /></td></tr>
 	  <tr><th class="plan">計画上の支援Bポイント</th><td><xsl:value-of select="//h:code[@code='1041200114']/../h:value/@value" /></td></tr>
 	  <tr><th class="plan">計画上の支援ポイント合計</th><td><xsl:value-of select="//h:code[@code='1041800114']/../h:value/@value" /></td></tr>
 
-	  <tr><th class="result">実施上の継続的な支援の実施回数</th><td><xsl:value-of select="//h:code[@code='1042800117']/../h:value/@value" />回</td></tr>
-	  <tr><th class="result">実施上の個別支援A回数</th><td><xsl:value-of select="//h:code[@code='1042101117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="result">実施上の個別支援A合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1042101113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1042101113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
-	  <tr><th class="result">実施上の個別支援B回数</th><td><xsl:value-of select="//h:code[@code='1042201117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="result">実施上の個別支援B合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1042201113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1042201113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
-	  <tr><th class="result">実施上のグループ支援回数</th><td><xsl:value-of select="//h:code[@code='1042302117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="result">実施上のグループ支援合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1042302113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1042302113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
-	  <tr><th class="result">実施上の電話A支援回数</th><td><xsl:value-of select="//h:code[@code='1042103117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="result">実施上の電話A支援合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1042103113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1042103113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
-	  <tr><th class="result">実施上のe-mailA支援回数</th><td><xsl:value-of select="//h:code[@code='1042104117']/../h:value/@value"/>回</td></tr>
-	  <tr><th class="result">実施上の電話B支援回数</th><td><xsl:value-of select="//h:code[@code='1042203117']/../h:value/@value"/>回</td></tr>
-	  <tr>
-	    <th class="result">実施上の電話B支援合計実施時間</th>
-	    <td>
-	      <xsl:value-of select="//h:code[@code='1042203113']/../h:value/@value"/>
-	      <xsl:value-of select="//h:code[@code='1042203113']/../h:value/@unit"/>
-	    </td>
-	  </tr>
-	  <tr><th class="result">実施上のe-mailB支援回数</th><td><xsl:value-of select="//h:code[@code='1042204117']/../h:value/@value"/>回</td></tr>
-	  <tr><th class="result">実施上の支援Aポイント</th><td><xsl:value-of select="//h:code[@code='1042100114']/../h:value/@value" /></td></tr>
-	  <tr><th class="result">実施上の支援Bポイント</th><td><xsl:value-of select="//h:code[@code='1042200114']/../h:value/@value" /></td></tr>
-	  <tr><th class="result">実施上の支援ポイント合計</th><td><xsl:value-of select="//h:code[@code='1042800114']/../h:value/@value" /></td></tr>
-	  <tr><th class="result">実施上の継続的支援終了日</th><td><xsl:value-of select="//h:code[@code='1042000022']/../h:value" /></td></tr>
 	  <tr><th class="inter">中間評価日時</th><td><xsl:value-of select="//h:code[@codeSystem='1.2.392.200119.6.3004']/../h:effectiveTime/@value" /></td></tr>
 	  <tr>
 	    <th class="inter">中間評価の支援形態または確認方法</th>
@@ -309,6 +268,7 @@
 	      </xsl:choose>
 	    </td>
 	  </tr>	  
+	  <tr><th class="final">最終評価できない場合の確認回数</th><td><xsl:value-of select="//h:code[@code='1042000116']/../h:value/@value" />回</td></tr>
 	  <tr>
 	    <th class="final">最終評価時の腹囲</th>
 	    <td>
@@ -368,8 +328,55 @@
 	      </xsl:choose>
 	    </td>
 	  </tr>
+	  <tr><th class="result">実施上の継続的な支援の実施回数</th><td><xsl:value-of select="//h:code[@code='1042800117']/../h:value/@value" />回</td></tr>
+	  <tr><th class="result">実施上の個別支援A回数</th><td><xsl:value-of select="//h:code[@code='1042101117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="result">実施上の個別支援A合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1042101113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1042101113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
+	  <tr><th class="result">実施上のグループ支援回数</th><td><xsl:value-of select="//h:code[@code='1042302117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="result">実施上のグループ支援合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1042302113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1042302113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
+	  <tr><th class="result">実施上の電話A支援回数</th><td><xsl:value-of select="//h:code[@code='1042103117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="result">実施上の電話A支援合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1042103113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1042103113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
+	  <tr><th class="result">実施上のe-mailA支援回数</th><td><xsl:value-of select="//h:code[@code='1042104117']/../h:value/@value"/>回</td></tr>
+	  <tr><th class="result">実施上の支援Aポイント</th><td><xsl:value-of select="//h:code[@code='1042100114']/../h:value/@value" /></td></tr>
+	  <tr><th class="result">実施上の個別支援B回数</th><td><xsl:value-of select="//h:code[@code='1042201117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="result">実施上の個別支援B合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1042201113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1042201113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
+
+	  <tr><th class="result">実施上の電話B支援回数</th><td><xsl:value-of select="//h:code[@code='1042203117']/../h:value/@value"/>回</td></tr>
+	  <tr>
+	    <th class="result">実施上の電話B支援合計実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1042203113']/../h:value/@value"/>
+	      <xsl:value-of select="//h:code[@code='1042203113']/../h:value/@unit"/>
+	    </td>
+	  </tr>
+	  <tr><th class="result">実施上のe-mailB支援回数</th><td><xsl:value-of select="//h:code[@code='1042204117']/../h:value/@value"/>回</td></tr>
+	  <tr><th class="result">実施上の支援Bポイント</th><td><xsl:value-of select="//h:code[@code='1042200114']/../h:value/@value" /></td></tr>
+	  <tr><th class="result">実施上の支援ポイント合計</th><td><xsl:value-of select="//h:code[@code='1042800114']/../h:value/@value" /></td></tr>
 	  <tr><th class="final">禁煙の指導回数</th><td><xsl:value-of select="//h:code[@code='1042800118']/../h:value/@value" />回</td></tr>
-	  <tr><th class="final">最終評価できない場合の確認回数</th><td><xsl:value-of select="//h:code[@code='1042000116']/../h:value/@value" />回</td></tr>
+	  <tr><th class="result">実施上の継続的支援終了日</th><td><xsl:value-of select="//h:code[@code='1042000022']/../h:value" /></td></tr>
 	</table>
 	<br/>
 	<br/>
