@@ -184,7 +184,7 @@
 	  <tr>
 	    <th class="inter">中間評価実施ポイント</th>
 	    <td>
-	      <xsl:value-of select="//h:code[@code='1032000013']/../h:value/@value" />
+	      <xsl:value-of select="//h:code[@code='1032000014']/../h:value/@value" />
 	    </td>
 	  </tr>
 	  <tr>
