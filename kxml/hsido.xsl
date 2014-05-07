@@ -175,6 +175,19 @@
 	    </td>
 	  </tr>
 	  <tr>
+	    <th class="inter">中間評価実施時間</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1032000013']/../h:effectiveTime/h:width/@value" />
+	      <xsl:value-of select="//h:code[@code='1032000013']/../h:effectiveTime/h:width/@unit" />
+	    </td>
+	  </tr>
+	  <tr>
+	    <th class="inter">中間評価実施ポイント</th>
+	    <td>
+	      <xsl:value-of select="//h:code[@code='1032000013']/../h:value/@value" />
+	    </td>
+	  </tr>
+	  <tr>
 	    <th class="inter">中間評価の実施者</th>
 	    <td>
 	      <xsl:choose>
