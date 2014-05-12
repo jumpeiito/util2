@@ -65,6 +65,10 @@
 (defmacro server-file (file)
   `(merge-pathnames *server-directory* ,file))
 
+(defun read-year ()
+  (call-with-input-file2 "f:/util2/.year"
+    #'read))
+
 (defvar *topdir*		"y:/23吉田/未処理/")
 (defvar *server-directory*	"f:/util2/kserv/")
 
@@ -84,8 +88,8 @@
 (defvar *fkca172*		"f:/FKCA172.csv")
 (defvar *fkac167*		"f:/FKAC167.csv")
 (defvar *fkac165*		"f:/FKAC165.csv")
-(defvar *year*			2013)
-(defvar *year2*			(mod *year* 1000))
+(defparameter *year*		(read-year))
+(defparameter *year2*		(mod *year* 1000))
 (defvar *usb2*			"g:/")
 (defvar *zip-directory*		'("f:/zip/" "d:/zip/"))
 (defvar *data3000-file*		"y:/23吉田/特定健診/●事業所健診結果の提供についての同意書及申請書.xlsx")
@@ -109,5 +113,20 @@
 				 (merge-pathnames *main-zip-directory* "HSIDO")))
 (defvar *hsido-output-file*	(server-file ".hsido"))
 (defvar *hsido-html-file*	"f:/util2/hsido/index.html")
+
+(defun write-year (year)
+  (call-with-output-file2 "f:/util2/.year"
+    (lambda (op)
+      (format op "~A" year))))
+
+(defun plus-1-year ()
+  (setf *year*  (1+ *year*)
+	*year2* (mod *year* 100))
+  (write-year *year*))
+
+(defun minus-1-year ()
+  (setf *year*  (1- *year*)
+	*year2* (mod *year* 100))
+  (write-year *year*))
 
 (in-package :cl-user)
