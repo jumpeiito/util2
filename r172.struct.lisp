@@ -33,3 +33,7 @@
 (defun get-year (172data)
   (with-slots (受診券整理番号 生年月日) 172data
     (jnum-how-old 生年月日 受診券整理番号)))
+
+(defun h? (172data)
+  (with-slots (受診券整理番号) 172data
+    (string= (string-take-right 受診券整理番号 2) "01")))

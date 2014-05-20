@@ -707,20 +707,26 @@
   (iter (for line :in v)
 	(for row :upfrom 1)
 	(optima:match line
+	  ; --------------------------------------------------
 	  ((LIST* "受診日" _)
 	   (next-iteration))
+	  ; --------------------------------------------------
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ _ sikaku _)
 	   (if (and sikaku (string-not-null sikaku))
 	       (collect row :into black)
 	       (optima:fail)))
+	  ; --------------------------------------------------
 	  ((LIST* _ _ _ _ _ jnum _ _ _ birth _)
 	   (if (eq 75 (how-old birth (jnum->nendo-end jnum)))
 	       (collect row :into black)
 	       (optima:fail)))
+	  ; --------------------------------------------------
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ _ _ "○" _)
 	   (collect row :into gray))
+	  ; --------------------------------------------------
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ _ _ "×" _)
 	   (collect row :into red))
+	  ; --------------------------------------------------
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ _ _ _ _ flag _)
 	   (if (ppcre:scan "(取得|喪失)" flag)
 	       (collect row :into yellow)

@@ -106,6 +106,21 @@
 	    (not 途中取得日) (not 途中喪失日)
 	    (equal "0" 除外))))))
 
+(defun target-right? (obj)
+  (declare (type zenken obj)
+	   (optimize (speed 3) (safety 0) (debug 0)))
+  (optima:match obj
+    ((zenken 途中取得日 途中喪失日 除外)
+     (and (not 途中取得日) (not 途中喪失日)
+	  (equal "0" 除外)))))
+
+(defun target-starter? (obj)
+  (declare (type zenken obj)
+	   (optimize (speed 3) (safety 0) (debug 0)))
+  (optima:match obj
+    ((zenken 途中取得日 除外)
+     (and (not 途中取得日) (equal "0" 除外)))))
+
 (defun to-data (filename)
   (let ((bhash (kensin:bunkai-hash)))
     (util::csv-read-filter-map
@@ -117,6 +132,20 @@
      (lambda (z)
        (and (typep z 'zenken)
 	    (not (equal (zenken-年度末支部 z) "年度末支部"))))
+     :code :SJIS)))
+
+(defun to-on-data (filename)
+  (let ((bhash (kensin:bunkai-hash)))
+    (util::csv-read-filter-map
+     filename
+     (lambda (line)
+       (handler-case (create-zenken line bhash)
+	 (sb-int:simple-program-error (e)
+	   (declare (ignorable e)) nil)))
+     (lambda (z)
+       (and (typep z 'zenken)
+	    (not (equal (zenken-年度末支部 z) "年度末支部"))
+	    (target? z)))
      :code :SJIS)))
 
 
@@ -134,6 +163,50 @@
 	 (_
 	  (funcall func (create-zenken line bhash)))))
        :code :SJIS)))
+
+(defun data-calc (target-pred pred)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (let ((hash (make-hash-table :test #'equal)))
+    (iterate
+     (lambda (z)
+       (with-slots (年度末年齢 年度末支部) z
+	 (let1 year (read-from-string 年度末年齢)
+	   (if (and (funcall target-pred z)
+		    (funcall pred z year))
+	       ;; (setq l (cons z l))
+	       (setf (gethash 年度末支部 hash)
+		     (cons z (gethash 年度末支部 hash))))))))
+    hash))
+
+(defun to-data-over-40 ()
+  (data-calc
+   #'target-right?
+   (lambda (r172 year)
+     (declare (ignorable r172))
+     (and (>= year 40) (< year 75)))))
+
+(defun to-data-over-20 ()
+  (data-calc
+   #'target-starter?
+   (lambda (r172 year)
+     (declare (ignorable r172))
+     (and (>= year 20) (< year 75)))))
+
+(defun to-data-multiple ()
+  (let ((40hash (make-hash-table :test #'equal))
+	(20hash (make-hash-table :test #'equal)))
+    (iterate
+     (lambda (z)
+       (with-slots (年度末年齢 年度末支部) z
+	 (let1 year (read-from-string 年度末年齢)
+	   (if (and (target-starter? z) (>= year 20) (< year 75))
+	       (setf (gethash 年度末支部 20hash)
+		     (cons z (gethash 年度末支部 20hash))))
+	   (if (and (target? z) ;; (>= year 40) (< year 75)
+		    )
+	       (setf (gethash 年度末支部 40hash)
+		     (cons z (gethash 年度末支部 40hash))))))))
+    (values 20hash 40hash)))
 
 (defun filter-map (pred func &key (file %file))
   (let (r)
