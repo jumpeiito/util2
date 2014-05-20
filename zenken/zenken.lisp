@@ -151,15 +151,15 @@
 
 (defun iterate (func &key (file %file))
   (declare (optimize (speed 3) (safety 0) (debug 0))
-	   (type pathname file))
+	   (type (or pathname simple-string) file))
   (let ((bhash (kensin::bunkai-hash)))
     (util::csv-read-iter
      file
      (lambda (line)
+       (declare (dynamic-extent line))
        (optima:match line
 	 ((list* "" _) nil)
 	 ((list* "年度末支部" _) nil)
-	 ;; ((list* _ _ _ _ _ _ _ _ _ _ _ _ "00000000000" _) nil)
 	 (_
 	  (funcall func (create-zenken line bhash)))))
        :code :SJIS)))
@@ -350,21 +350,21 @@
 
 (declaim (inline kensin:kensin-year? string-space-filled?))
 
-(defun month-calc (file)
-  (iter (with array = (make-array '(96 13) :initial-element nil))
-	(for line :in-csv file :code :SJIS)
-	(if (first-time-p) (next-iteration))
-	(optima:match line
-	  ((list* shibu _ _ _ _ _ _ _ o g r _ _ _ date hospital _)
-	   (if (and (kensin:kensin-year? (read-from-string o))
-		    (string-space-filled? g)
-		    (string-space-filled? r)
-		    (not (equal hospital "0000000000")))
-	       (let* ((m     (date-month (strdt date)))
-		      (month (if (< m 4) (+ m 9) (- m 4))))
-		 (setf (aref array (read-from-string shibu) month)
-		       (cons hospital (aref array (read-from-string shibu) month)))))))
-	(finally (return array))))
+;; (defun month-calc (file)
+;;   (iter (with array = (make-array '(96 13) :initial-element nil))
+;; 	(for line :in-csv file :code :SJIS)
+;; 	(if (first-time-p) (next-iteration))
+;; 	(optima:match line
+;; 	  ((list* shibu _ _ _ _ _ _ _ o g r _ _ _ date hospital _)
+;; 	   (if (and (kensin:kensin-year? (read-from-string o))
+;; 		    (string-space-filled? g)
+;; 		    (string-space-filled? r)
+;; 		    (not (equal hospital "0000000000")))
+;; 	       (let* ((m     (date-month (strdt date)))
+;; 		      (month (if (< m 4) (+ m 9) (- m 4))))
+;; 		 (setf (aref array (read-from-string shibu) month)
+;; 		       (cons hospital (aref array (read-from-string shibu) month)))))))
+;; 	(finally (return array))))
 
 (defpackage :zenken-calc
   (:nicknames #:zc)
