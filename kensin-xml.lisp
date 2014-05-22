@@ -294,7 +294,8 @@
 (defun kx/parse-base (entry)
   (& kx-string-to-stp
      kx-purify
-     sb-ext:octets-to-string
+     #+sbcl  sb-ext:octets-to-string
+     #+clisp babel:octets-to-string
      zip:zipfile-entry-contents
      entry))
 
