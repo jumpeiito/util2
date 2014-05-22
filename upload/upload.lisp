@@ -55,8 +55,9 @@
   (iter (with hash = (r172c::172-hash))
 	(for line :in-csv parse-file :code :SJIS)
 	(optima:match line
-	  ((LIST* zip _ jnum _)
-	   (if (not-upload? jnum hash)
+	  ((LIST* zip _ jnum rest)
+	   (if (and (not-upload? jnum hash)
+		    (eq ksetting::*year* (nendo-year (last1 rest))))
 	       (collect zip :into pot))))
 	(finally (return (uniq pot)))))
 
@@ -90,6 +91,7 @@
 	      (iter (with old    = (old-directory))
 		    (with new    = (new-directory))
 		    (with upload = (upload-files))
+		    (with counter = 0)
 		    (for file :in  (not-upload-file))
 		    (for oldpath = (make-pathname :defaults old
 						  :name file
@@ -99,6 +101,9 @@
 						  :type "zip"))
 		    (when (usb-not-has-file? file upload)
 		      (format t "~A ==> ~A~%" oldpath newpath)
-		      (cl-fad:copy-file oldpath newpath))))
+		      (cl-fad:copy-file oldpath newpath)
+		      (setq counter (1+ counter)))
+		    (finally (if (eq 0 counter)
+				 (format t "コピーするファイルがありませんでした。~%")))))
 	    (format t "コピーするファイルがありません。~%")))
       (format t "アップロード用USBが挿さっていません。~%")))
