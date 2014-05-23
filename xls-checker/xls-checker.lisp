@@ -335,18 +335,19 @@
   ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (chc::xls-checker-format "氏名欄の修正~%")
   (force-output)
-  (iter (for (line) :in (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3))))
-	(for row :upfrom 6)
-	(cond
-	  ;; 正常なもの
-	  ((scan "([^ 　]+)　([^ 　]+)" line)
-	   nil)
-	  ;; 修正可能なもの
-	  ((scan ".+[ 　]+.+" line)
-	   (%name-repair sheet row line))
-	  ;; 修正不可のもの。目視で確認
-	  (t
-	   (check:fcolor sheet (:c row))))))
+  (let ((val (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3)))))
+    (iter (for line :in (if (listp val) val (list val)))
+  	  (for row :upfrom 6)
+  	  (cond
+  	    ;; 正常なもの
+  	    ((scan "([^ 　]+)　([^ 　]+)" line)
+  	     nil)
+  	    ;; 修正可能なもの
+  	    ((scan ".+[ 　]+.+" line)
+  	     (%name-repair sheet row line))
+  	    ;; 修正不可のもの。目視で確認
+  	    (t
+  	     (check:fcolor sheet (:c row)))))))
 
 (defun %bformat (sheet row column)
   (set-format sheet (column row) "yyyy/mm/dd"))
@@ -784,15 +785,25 @@
 	     (contents (sheet-contents sheet hash))
 	     (newfile  #[contents :newfile f]))
 	;; (check-body:repair sheet contents)
+	(print :hoge1)
 	(check-base:name-repair sheet)
+	(print :hoge2)
 	(check-base:birthday-repair sheet contents)
+	(print :hoge3)
 	(check-base:insurance-repair sheet)
+	(print :hoge4)
 	(check-hba1c:repair b sheet contents)
+	(print :hoge5)
 	(check-relative:repair sheet contents)
+	(print :hoge6)
 	(check-available:repair sheet contents)
+	(print :hoge7)
 	(check-must:repair sheet contents)
+	(print :hoge8)
 	(check-either:repair sheet contents)
+	(print :hoge9)
 	(check-hanzen:repair sheet contents)
+	(print :hoge10)
 	(excel::save-book b newfile :xls)
 	(format t "処理が終わりました。~%")
 	newfile))))
