@@ -335,8 +335,11 @@
   ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (chc::xls-checker-format "氏名欄の修正~%")
   (force-output)
-  (let ((val (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3)))))
-    (iter (for line :in (if (listp val) val (list val)))
+  (let ((val
+	  (optima:match (value sheet (:c 6) (:c (lastrow sheet :y 5 :x 3)))
+	    ((optima:guard v (listp v)) (mapcar #'car v))
+	    (x (list x)))))
+    (iter (for line :in val)
   	  (for row :upfrom 6)
   	  (cond
   	    ;; 正常なもの
