@@ -150,7 +150,7 @@
    (newname	(format nil "~A(~A)-~A-~A.xls"
 			hcode
 			(cdr (assoc hcode hospital-alist :test #'equal))
-			(util::date-8 occurd)
+			(if occurd (util::date-8 occurd) "")
 			(now))))
   (:nth       (num)
 	      (mapcar (lambda (line) (nth num line)) body))
@@ -724,7 +724,7 @@
 	(for row :upfrom 6)
 	(declare (type fixnum row col))
 	(optima:match cell
-	  ((type NULL)
+	  ((Type NULL)
 	   (next-iteration))
 	  ((type STRING)
 	   (let ((post (to-zenkaku (the string cell))))
@@ -813,7 +813,8 @@
     (let* ((truefile (parse-filename file))
 	   (newfile (%core app truefile :close close))
 	   (dfile   (merge-pathnames #P"d:/特定健診結果データ/"
-	   			     newfile)))
+	   			     newfile))
+	   )
       (unless (cl-fad:file-exists-p dfile)
       	(cl-fad:copy-file newfile dfile)))))
 
