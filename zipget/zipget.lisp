@@ -20,13 +20,22 @@
 	    (collect file))))
 
 (defun entry-to-contents (entry)
-  (with-decoding-error
-      ((sb-ext:octets-to-string
-       (zip:zipfile-entry-contents entry)
-       :external-format :SJIS))
-    ((sb-ext:octets-to-string
-       (zip:zipfile-entry-contents entry)
-       :external-format :UTF8))))
+  ;; (with-decoding-error
+  ;;     ((sb-ext:octets-to-string
+  ;;      (zip:zipfile-entry-contents entry)
+  ;;      :external-format :SJIS))
+  ;;   ((sb-ext:octets-to-string
+  ;;      (zip:zipfile-entry-contents entry)
+  ;;      :external-format :UTF8)))
+  (let ((content (zip:zipfile-entry-contents entry)))
+    (handler-case
+	(sb-ext:octets-to-string content :external-format :SJIS)
+      (sb-int:stream-decoding-error (e)
+	(declare (ignorable e))
+	(sb-ext:octets-to-string content :external-format :UTF8))
+      (sb-impl::malformed-shift_jis (e)
+	(declare (ignorable e))
+	(sb-ext:octets-to-string content :external-format :UTF8)))))
 
 (defun get-nth-column (zip-entry nth)
   (mapcar (lambda (line) (nth nth line))
@@ -84,6 +93,12 @@
 (defun zip-to-contents (zipname file-regexp)
   (zip:with-zipfile (z zipname)
     (get-csv-contents z file-regexp)))
+
+;; (zip:with-zipfile (z "y:/47伊東/ke26312901_20140704090044.zip")
+;;   (get-csv-contents z "FKCA172")
+;;   ;; (zip:do-zipfile-entries (n e z)
+;;   ;;   (entry-to-contents e))
+;;   )
 
 (defun seek (directory file-regexp)
   (let1 zipfile (car (sort2 (has-file? directory file-regexp)
