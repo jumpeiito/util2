@@ -87,18 +87,17 @@
 	   (zip:zipfile-entries zip-instance)))
 
 (defun get-csv-contents (zip-instance file-regexp)
-  (entry-to-contents
-   (get-csv-entry zip-instance file-regexp)))
+  (iter (for char
+	     :in-string (entry-to-contents
+			 (get-csv-entry zip-instance file-regexp)))
+	(unless (or (char= char #\zero_width_no-break_space)
+		    (char= char #\Return))
+	  (collect char :into pot))
+	(finally (coerce pot 'string))))
 
 (defun zip-to-contents (zipname file-regexp)
   (zip:with-zipfile (z zipname)
     (get-csv-contents z file-regexp)))
-
-;; (zip:with-zipfile (z "y:/47伊東/ke26312901_20140704090044.zip")
-;;   (get-csv-contents z "FKCA172")
-;;   ;; (zip:do-zipfile-entries (n e z)
-;;   ;;   (entry-to-contents e))
-;;   )
 
 (defun seek (directory file-regexp)
   (let1 zipfile (car (sort2 (has-file? directory file-regexp)
