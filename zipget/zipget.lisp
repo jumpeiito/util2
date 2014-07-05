@@ -93,7 +93,7 @@
 	(unless (or (char= char #\zero_width_no-break_space)
 		    (char= char #\Return))
 	  (collect char :into pot))
-	(finally (coerce pot 'string))))
+	(finally (return (coerce pot 'string)))))
 
 (defun zip-to-contents (zipname file-regexp)
   (zip:with-zipfile (z zipname)
