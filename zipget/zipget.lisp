@@ -91,7 +91,8 @@
 	     :in-string (entry-to-contents
 			 (get-csv-entry zip-instance file-regexp)))
 	(unless (or (char= char #\zero_width_no-break_space)
-		    (char= char #\Return))
+		    ;; (char= char #\Return)
+		    )
 	  (collect char :into pot))
 	(finally (return (coerce pot 'string)))))
 
