@@ -747,11 +747,15 @@
 	(declare (type fixnum row))
 	(optima:match cell
 	  ((type NULL)
+	   (print :null)
 	   (next-iteration))
 	  ((type NUMBER)
+	   (print :number)
 	   (next-iteration))
 	  ((type STRING)
+	   (print :string1)
 	   (when (not (equal (to-hankaku cell) cell))
+	     (print :string0)
 	     (check:value! sheet row col (& read-from-string to-hankaku cell))
 	     (check:rcolor sheet ((check:num->col col) row)))))))
 
@@ -815,8 +819,9 @@
 	   (dfile   (merge-pathnames #P"d:/特定健診結果データ/"
 	   			     newfile))
 	   )
-      (unless (cl-fad:file-exists-p dfile)
-      	(cl-fad:copy-file newfile dfile)))))
+      ;; (unless (cl-fad:file-exists-p dfile)
+      ;; 	(cl-fad:copy-file newfile dfile))
+      )))
 
 (defun directory-main (directory)
   (with-excel (app :visible t :quit nil :debugger t)

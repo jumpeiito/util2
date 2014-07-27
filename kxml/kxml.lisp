@@ -437,4 +437,12 @@
 (defun zip-info (zipfile)
   (map-with-kxml #'info zipfile))
 
+(defun xml-writeout ()
+  (iter (with list = (directory-list ksetting::*hsido-directory* :type "zip"))
+	(with length = (length list))
+	(for zipfile :in list)
+	(for i :upfrom 1)
+	(format t "~4,'0d/~4,'0d ~A~%" i length zipfile)
+	(map-with-kxml #'write-out zipfile)))
+
 (in-package :cl-user)

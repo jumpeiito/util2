@@ -127,7 +127,8 @@
      filename
      (lambda (line)
        (handler-case (create-zenken line bhash)
-	 (sb-int:simple-program-error (e)
+	 (#+sbcl sb-int:simple-program-error
+	  #+clisp error (e)
 	   (declare (ignorable e)) nil)))
      (lambda (z)
        (and (typep z 'zenken)
@@ -140,7 +141,8 @@
      filename
      (lambda (line)
        (handler-case (create-zenken line bhash)
-	 (sb-int:simple-program-error (e)
+	 (#+sbcl sb-int:simple-program-error
+	  #+clisp error (e)
 	   (declare (ignorable e)) nil)))
      (lambda (z)
        (and (typep z 'zenken)
