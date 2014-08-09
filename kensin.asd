@@ -9,7 +9,7 @@
    			 (:file "setting" :depends-on ("package"))
 			 ;; (:file "setter"  :depends_on ("package"))
 			 ))
-   ;; (:file "kensin-xml"	:depends-on ("package"))
+   (:file "kensin-xml"	:depends-on ("package"))
    (:module :zenken
    	    :components ((:file "package")
    			 (:file "zenken" :depends-on ("package"))))
