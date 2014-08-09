@@ -213,7 +213,7 @@
 
 (in-package #:R172-UCHIWAKE)
 
-(defparameter file "y:/68稲吉/理事会資料/0000.xlsx")
+(defparameter file "y:/68稲吉/14_理事会資料/0000.xlsx")
 
 (defun shibulist ()
   (iter (for (k . v) :in kensin::short-shibu-alist)

@@ -47,20 +47,23 @@
 
 (defmacro with-zenken-slot (instance &rest body)
   `(with-slots (年度末支部 名 保険証番号 行 氏名 本人／家族 性別 生年月日
-			  年度末年齢 途中取得日 途中喪失日 除外 整理番号 発行日 受診日
+			  年度末年齢 途中取得日 途中喪失日 除外 整理番号 発行日 受診日 受診区分
 			  健診機関 取込方法 保健指導 指導日 支援 証支部 個人番号 組合番号
 			  支部 分会 班 表示順 上名 下名 分会名 現支部 健診機関コード) ,instance
      ,@body))
 
 (defun solve-bunkai (kgbg shibu bunkai bhash)
-  (cl-irregsexp:if-match-bind
-   ((char) (char) "85" (+ (char)))
-   (the string kgbg)
-   (gethash (format nil "~2,'0d~2,'0d" shibu bunkai) bhash)
-   (cl-irregsexp:if-match-bind
-    ((integer :length 2) (s (integer :length 2)) (b (integer :length 2)) (+ (string)))
-    (the string kgbg)
-    (gethash (format nil "~2,'0d~2,'0d" s b) bhash))))
+  (cl-irregsexp:if-match-bind ((integer :length 2) (s (integer
+    :length 2)) (b (integer :length 2)) (+ (string))) (the string
+    kgbg) (gethash (format nil "~2,'0d~2,'0d" s b) bhash))
+  ;; (cl-irregsexp:if-match-bind
+  ;;  ((char) (char) "85" (+ (char)))
+  ;;  (the string kgbg)
+  ;;  (gethash (format nil "~2,'0d~2,'0d" shibu bunkai) bhash)
+  ;;  (cl-irregsexp:if-match-bind ((integer :length 2) (s (integer
+  ;;   :length 2)) (b (integer :length 2)) (+ (string))) (the string
+  ;;   kgbg) (gethash (format nil "~2,'0d~2,'0d" s b) bhash)))
+  )
 
 (defun create-zenken (list bhash)
   (declare (type list list) (type hash-table bhash)
@@ -79,7 +82,8 @@
 	    発行日	(date-string-normalize (strdt 発行日))
 	    受診日	(date-string-normalize (strdt 受診日))
 	    指導日	(date-string-normalize (strdt 指導日))
-	    分会名	(solve-bunkai 保険証番号 支部 分会 bhash)
+	    分会名	;; (solve-bunkai 保険証番号 支部 分会 bhash)
+	    (gethash (format nil "~A~A" 証支部 分会) bhash)
 	    現支部	(if (equal "85" 証支部)
 			    (subseq (the string 保険証番号) 4 6)
 			    証支部)
@@ -281,7 +285,8 @@
 	  			  (if (string-null 健診機関) nil 健診機関)
 	  			  (if (string-null 取込方法) nil 取込方法)
 	  			  発行日 分会 班 分会名 現支部
-	  			  年度末支部 整理番号))))
+	  			  年度末支部 整理番号
+				  受診区分))))
 	  )))
 
 (defun id-hash2 (filename basedate)
