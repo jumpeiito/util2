@@ -200,19 +200,23 @@
 
 (defun to-data-multiple ()
   (let ((40hash (make-hash-table :test #'equal))
-	(20hash (make-hash-table :test #'equal)))
+	(20hash (make-hash-table :test #'equal))
+	(duplicate-hash (make-hash-table :test #'equal)))
     (iterate
      (lambda (z)
-       (with-slots (年度末年齢 年度末支部) z
+       (with-slots (年度末年齢 年度末支部 氏名 生年月日) z
 	 (let1 year (read-from-string 年度末年齢)
 	   (if (and (target-starter? z) (>= year 20) (< year 75))
 	       (setf (gethash 年度末支部 20hash)
 		     (cons z (gethash 年度末支部 20hash))))
-	   (if (and (target? z) ;; (>= year 40) (< year 75)
-		    )
-	       (setf (gethash 年度末支部 40hash)
-		     (cons z (gethash 年度末支部 40hash))))))))
-    (values 20hash 40hash)))
+	   (if (target? z)
+	     (setf (gethash 年度末支部 40hash)
+		   (cons z (gethash 年度末支部 40hash))))
+	   (if (and (>= year 40) (< year 75))
+	       (let ((cons (cons 氏名 生年月日)))
+		 (setf (gethash cons duplicate-hash)
+		       (cons z (gethash cons duplicate-hash)))))))))
+    (values 20hash 40hash duplicate-hash)))
 
 (defun filter-map (pred func &key (file %file))
   (let (r)

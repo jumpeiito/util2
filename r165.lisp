@@ -37,7 +37,7 @@
        ((LIST _)               :ignore)	; 最終行
        (_
 	(funcall func (r165::line->data line)))))
-   :code :SJIS))
+   :code :UTF-8))
 
 (defun r165-hash ()
   (let ((hash (make-hash-table :test #'equal)))

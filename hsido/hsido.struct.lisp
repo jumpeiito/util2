@@ -98,9 +98,10 @@
 	  (warn "Assertion of inappropriate rnumber(~A: ~A) in 'make-hsido'"
 		rnumber name)
 	  (handler-case
-	      (setf (aref rnumber 2)
+	      (setf rnumber jnumber
+		    (aref rnumber 2)
 		    (if (string= level "動機づけ支援") #\3 #\2))
 	    (sb-int:invalid-array-index-error (e)
 	      (declare (ignorable e))
-	      (setq rnumber ""))))
-	obj))))
+	      (setq rnumber ""))))))
+	obj))

@@ -110,7 +110,7 @@
    contents pathname
    :if-exists		:overwrite
    :if-does-not-exist	:create
-   :external-format	:sjis))
+   :external-format	:utf-8))
 
 (defun drive-f-name (string)
   (make-pathname :defaults #P"f:/"
