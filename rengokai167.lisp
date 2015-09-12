@@ -143,7 +143,7 @@
        ((LIST* "保険者番号" _) nil)
        ((LIST _) nil)
        (_ line)))
-   :code :SJIS))
+   :code :sjis))
 
 (defun 167file-id-hash (filename)
   (iter (with hash = (make-hash-table :test #'equal))

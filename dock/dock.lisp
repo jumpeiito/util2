@@ -409,10 +409,9 @@
     :code :SJIS))
 
 (defun %condition (val)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (iter (for line :in val)
 	(for row :upfrom 1)
-	(declare (type fixnum row))
 	(optima:match line
 	  ((LIST* "健診機関" _)
 	   (next-iteration))
@@ -428,15 +427,19 @@
 	   (collect row :into gray))
 	  ((LIST* _ _ _ _ nil _)
 	   (collect row :into bl2))
-	  ((LIST* _ _ _ nendo _ _ _ _ _ birth _)
-	   (if (not (kensin:kensin-year?
-		     (the fixnum (how-old birth (nendo-end (truncate nendo))))))
-	       (collect row :into bl2)
-	       (optima:fail)))
+	  ((LIST* _ app-date _ nendo _ _ _ _ _ birth _)
+	   (let ((true-nendo (or nendo
+				 (nendo-year app-date))))
+	     (if (not (kensin:kensin-year?
+		       (how-old birth (nendo-end (truncate true-nendo)))))
+		 (collect row :into bl2)
+		 (optima:fail))))
 	  ((LIST* _ _ _ _ _ _ _ _ _ _ "×" "×" _)
 	   (collect row :into red))
 	  )
-	(finally (return (values bl2 gray yellow red)))))
+	(finally (return (values bl2 gray yellow red)))
+	;; (finally (print (list (values bl2 gray yellow red))))
+	))
 
 (defmacro %color (sheet function color numlist)
   `(iter (for rows :in (compact-str ,numlist))
@@ -455,8 +458,8 @@
 		 :type "xls"))
 
 (defun toxls ()
-  (with-excel (app :visible t :quit nil)
-    (with-excel-book (app bk ksetting::*dock-init-file2* :close nil)
+  (with-excel (app :visible t :quit nil :debugger t)
+    (with-excel-book (app bk ksetting::*dock-init-file2* :close nil :debugger t)
       (let* ((sh  (ole bk :Worksheets :Item 1))
 	     (val (ole sh :UsedRange  :Value))
 	     (lr  (lastrow sh)))
@@ -472,6 +475,8 @@
 	  (%color sh set-colorindex excel::xlgray50 bl2)
 	  (border sh (:a 1) (:p lr))
 	  (ole sh :range (format nil "A1:P~A" lr) :AutoFilter 1)
-	  (excel::save-book bk ksetting::*dock-file* :xls))))))
+	  (excel::save-book bk ksetting::*dock-file* :xls)
+	  )
+	))))
 
 (in-package :cl-user)

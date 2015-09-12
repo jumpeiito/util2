@@ -106,11 +106,15 @@
     (zip-to-contents zipfile file-regexp)))
 
 (defun zip-write (contents pathname)
-  (alexandria:write-string-into-file
-   contents pathname
-   :if-exists		:overwrite
-   :if-does-not-exist	:create
-   :external-format	:utf-8))
+  ;; (alexandria:write-string-into-file
+  ;;  contents pathname
+  ;;  :if-exists		:overwrite
+  ;;  :if-does-not-exist	:create
+  ;;  :external-format	:sjis)
+  (call-with-output-file2 pathname
+    (lambda (op)
+      (write-string contents op))
+    :code :SJIS))
 
 (defun drive-f-name (string)
   (make-pathname :defaults #P"f:/"

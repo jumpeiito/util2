@@ -153,6 +153,7 @@
   (let* ((sh (ole bk :Worksheets :item "リスト"))
 	 (lr (lastrow sh :y 3 :x 6)))
     (iter (for i :from 4 :to lr)
+	  (print i)
 	  (handler-case (value sh (:a i) (:ae i))
 	    (simple-error (e)
 	      (declare (ignorable e))
